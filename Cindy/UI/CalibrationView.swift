@@ -40,8 +40,19 @@ struct CalibrationView: View {
 private struct CalibrationFlowView: View {
     @Bindable var engine: CalibrationEngine
     var onDone: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        // At the largest text sizes a step outgrows the screen, and the button
+        // at its bottom is the one that matters. Scroll only then, so the
+        // spacers keep pinning that button to the bottom everywhere else.
+        ViewThatFits(in: .vertical) {
+            steps
+            ScrollView { steps }
+        }
+    }
+
+    private var steps: some View {
         VStack(spacing: 20) {
             switch engine.step {
             case .intro:
@@ -85,7 +96,7 @@ private struct CalibrationFlowView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .controlSize(.large)
         }
     }
@@ -107,7 +118,7 @@ private struct CalibrationFlowView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .controlSize(.large)
         }
     }
@@ -118,7 +129,9 @@ private struct CalibrationFlowView: View {
             Spacer()
             Text(verbatim: "\(remaining)")
                 .font(.system(size: 160, weight: .black, design: .rounded))
-                .contentTransition(.numericText())
+                .contentTransition(reduceMotion ? .identity : .numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
             Text(L("Hold the start position"))
                 .foregroundStyle(.secondary)
             Spacer()
@@ -165,7 +178,7 @@ private struct CalibrationFlowView: View {
                     Text(engine.stepNumber == engine.stepCount ? L("Done") : L("Continue"))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .brandProminentButtonStyle()
                 .controlSize(.large)
             }
         }
@@ -190,7 +203,7 @@ private struct CalibrationFlowView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .controlSize(.large)
         }
     }
@@ -211,7 +224,7 @@ private struct CalibrationFlowView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .controlSize(.large)
         }
     }

@@ -7,14 +7,39 @@ struct ExerciseDemoView: View {
     /// Set while the view is off screen so the animation stops costing frames.
     var isPaused: Bool = false
     @State private var modelFailed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// With Reduce Motion on, a demo waits to be started instead of looping
+    /// the moment it appears. It is still the whole point of the screen, so
+    /// one tap plays it.
+    @State private var playRequested = false
 
     var body: some View {
+        let paused = isPaused || (reduceMotion && !playRequested)
+        renderer(paused: paused)
+            .overlay(alignment: .bottomTrailing) {
+                if reduceMotion {
+                    Button {
+                        playRequested.toggle()
+                    } label: {
+                        Label(playRequested ? L("Pause movement") : L("Play movement"),
+                              systemImage: playRequested ? "pause.circle.fill" : "play.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .font(.largeTitle)
+                    }
+                    .buttonStyle(.borderless)
+                    .padding(8)
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func renderer(paused: Bool) -> some View {
         let demo = exercise.demo
         if let url = Self.modelURL(for: demo), !modelFailed {
-            RealityDemoView(url: url, perspective: demo.perspective) { modelFailed = true }
+            RealityDemoView(url: url, perspective: demo.perspective, isPaused: paused) { modelFailed = true }
                 .aspectRatio(1, contentMode: .fit)
         } else {
-            StickFigureDemoView(demo: demo, isPaused: isPaused)
+            StickFigureDemoView(demo: demo, isPaused: paused)
         }
     }
 

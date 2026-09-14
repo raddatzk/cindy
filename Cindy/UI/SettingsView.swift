@@ -244,6 +244,7 @@ struct RecordingsView: View {
                                 Image(systemName: "square.and.arrow.up")
                             }
                             .buttonStyle(.borderless)
+                            .accessibilityLabel(L("Share recording"))
                         }
                     }
                     .onDelete { offsets in

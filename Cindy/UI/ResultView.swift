@@ -34,7 +34,7 @@ struct ResultView: View {
                     Text(L("Save"))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .brandProminentButtonStyle()
                 .controlSize(.large)
             }
         }
@@ -76,9 +76,15 @@ struct ResultView: View {
             let diff = record.score.totalReps - last.score.totalReps
             VStack(spacing: 4) {
                 Text(L("Previous result: \(last.score.notation)"))
-                Text(diff >= 0 ? L("+\(diff) reps") : L("\(diff) reps"))
-                    .font(.headline)
-                    .foregroundStyle(diff >= 0 ? Color.green : Color.red)
+                // The sign and the arrow say better or worse; the colour only
+                // repeats it, and green or red text would be too faint to read.
+                Label {
+                    Text(diff >= 0 ? L("+\(diff) reps") : L("\(diff) reps"))
+                } icon: {
+                    Image(systemName: diff >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
+                        .foregroundStyle(diff >= 0 ? Color.green : Color.red)
+                }
+                .font(.headline)
             }
             .padding()
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))

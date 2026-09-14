@@ -193,7 +193,7 @@
 "Phone on the floor below you, screen facing up." = "Handy auf den Boden unter dich, Display nach oben.";
 "Better: tilt it 30–45°, for example against a weight plate. That improves the signal a lot." = "Besser: um 30–45° anwinkeln, zum Beispiel an eine Hantelscheibe gelehnt. Das verbessert das Signal deutlich.";
 "Train in the clothes you calibrated in, without a cap or hood." = "Trainiere in der Kleidung, in der du kalibriert hast, ohne Mütze oder Kapuze.";
-"Cindy calls out every rep, so you never have to look at the screen." = "Cindy sagt jede Wiederholung an — du musst nie auf das Display schauen.";
+"Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen." = "Cindy piept bei jeder Wiederholung und sagt jede neue Runde und Übung an — du musst nie auf das Display schauen.";
 "This is what a rep looks like" = "So sieht eine Wiederholung aus";
 "Exercise" = "Übung";
 "Tap through the exercises. The phone in the drawing shows where it has to lie for Cindy to see your face." = "Tipp dich durch die Übungen. Das Handy in der Zeichnung zeigt, wo es liegen muss, damit Cindy dein Gesicht sieht.";
@@ -236,3 +236,17 @@
 "You should be recovered. Ready for the next round?" = "Du solltest erholt sein. Bereit für die nächste Runde?";
 "A little later than usual — your body was still catching up." = "Etwas später als sonst – dein Körper war noch am Aufholen.";
 "Your body asked for an extra day. Now you should be good to go." = "Dein Körper wollte einen Tag extra. Jetzt sollte es passen.";
+
+/* MARK: - Accessibility */
+"%lld of %lld" = "%1$lld von %2$lld";
+"Hide camera preview" = "Kameravorschau ausblenden";
+"Show camera preview" = "Kameravorschau einblenden";
+"Last minute" = "Letzte Minute";
+"One rep less" = "Eine Wiederholung weniger";
+"One rep more" = "Eine Wiederholung mehr";
+"Minus one" = "Minus eins";
+"Plus one" = "Plus eins";
+"Pause movement" = "Bewegung anhalten";
+"Play movement" = "Bewegung abspielen";
+"Remove %@" = "%@ entfernen";
+"Share recording" = "Aufnahme teilen";

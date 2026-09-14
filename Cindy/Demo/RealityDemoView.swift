@@ -13,9 +13,13 @@ struct RealityDemoView: View {
     /// Which side to watch the movement from — the same choice the stick
     /// figure makes, for the same reason.
     let perspective: StickPerspective
+    /// Holds the loop on its current frame — for Reduce Motion, until asked.
+    var isPaused: Bool = false
     /// Called when the model cannot be loaded, so the caller can fall back to
     /// the stick figure instead of leaving an empty box.
     var onFailure: () -> Void
+
+    @State private var playback: AnimationPlaybackController?
 
     /// Largest extent of a finished model, in metres. Set by the exporter's
     /// `--size`, not here: the models arrive centred on the origin and scaled
@@ -29,13 +33,22 @@ struct RealityDemoView: View {
             content.add(Self.makeCamera(perspective))
             do {
                 let model = try await Entity(contentsOf: url)
-                Self.loopAnimation(of: model)
+                // Added first: an animation started on an entity that is not
+                // in the scene yet comes back to life when it is added, which
+                // is how a paused demo kept moving.
                 content.add(model)
+                playback = Self.loopAnimation(of: model, startsPaused: isPaused)
             } catch {
                 onFailure()
             }
         }
         .realityViewCameraControls(.orbit)
+        .onChange(of: isPaused) { _, paused in
+            if paused { playback?.pause() } else { playback?.resume() }
+        }
+        // Decorative to VoiceOver: the sheet around it lists the same
+        // movement as numbered cues, and the button that opened it is labelled.
+        .accessibilityHidden(true)
     }
 
     // MARK: - Scene
@@ -69,13 +82,18 @@ struct RealityDemoView: View {
         return light
     }
 
-    private static func loopAnimation(of model: Entity) {
+    private static func loopAnimation(of model: Entity, startsPaused: Bool) -> AnimationPlaybackController? {
         guard let animation = model.availableAnimations.first else {
             // A still model beats an empty box, but a demo is supposed to
             // move — say so rather than shipping a statue by accident.
             assertionFailure("\(model.name) has no animation to play")
-            return
+            return nil
         }
-        model.playAnimation(animation.repeat(), transitionDuration: 0.2, startsPaused: false)
+        let playback = model.playAnimation(animation.repeat(), transitionDuration: 0.2, startsPaused: false)
+        // Paused afterwards rather than through `startsPaused`, which left the
+        // loop running in the simulator — two frames a second apart differed
+        // exactly where the model is.
+        if startsPaused { playback.pause() }
+        return playback
     }
 }

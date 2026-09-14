@@ -59,7 +59,7 @@ struct StartView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
-                .buttonStyle(.borderedProminent)
+                .brandProminentButtonStyle()
                 .controlSize(.large)
                 .disabled(!model.isCalibrated)
 

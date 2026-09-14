@@ -14,9 +14,11 @@ struct ReadinessCard: View {
                 Label(L("Readiness"), systemImage: "gauge.with.dots.needle.bottom.50percent")
                     .font(.headline)
                 Spacer()
+                // Primary, not the band colour: orange and green on the card
+                // are about 2:1. The bar below carries the colour, and the
+                // band's name is written out underneath.
                 Text(readiness.score.formatted(.number.locale(Localization.locale)))
                     .font(.title2.weight(.bold).monospacedDigit())
-                    .foregroundStyle(color)
                     .accessibilityLabel(L("Readiness \(readiness.score) of 100"))
             }
             ProgressView(value: Double(readiness.score), total: 100)
@@ -43,7 +45,7 @@ struct ReadinessCard: View {
             if !readiness.usesHealthData {
                 Text(L("Estimated from your workout history alone — connect Apple Health for sleep and heart data."))
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

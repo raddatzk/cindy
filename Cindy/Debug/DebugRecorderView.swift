@@ -113,7 +113,7 @@ private struct DebugScreen: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .tint(engine.isRecording ? .red : .brand)
             if engine.isRecording {
                 Text("\(engine.recordedRows) Frames …")

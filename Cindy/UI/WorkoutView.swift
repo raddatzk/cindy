@@ -42,27 +42,21 @@ private struct WorkoutScreen: View {
     @Binding var showPreview: Bool
     @Binding var confirmAbort: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
     var body: some View {
         ZStack {
             Color.screenBackground.ignoresSafeArea()
-            VStack(spacing: 12) {
-                topBar
-                Spacer(minLength: 0)
-                timer
-                exerciseBlock
-                Spacer(minLength: 0)
-                statusLine
-                if showPreview {
-                    CameraPreviewView(session: engine.camera.session)
-                        .frame(width: 120, height: 160)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                controls
+            // The big numbers shrink to fit on their own; the controls cannot.
+            // At the largest text sizes the screen scrolls rather than pushing
+            // Pause and Stop off the bottom.
+            ViewThatFits(in: .vertical) {
+                layout
+                ScrollView { layout }
             }
-            .padding()
-            .animation(.snappy, value: engine.phase)
-            .animation(.snappy, value: engine.isPaused)
+            .animation(reduceMotion ? nil : .snappy, value: engine.phase)
+            .animation(reduceMotion ? nil : .snappy, value: engine.isPaused)
 
             if engine.phase == .countdown {
                 countdownOverlay
@@ -78,6 +72,32 @@ private struct WorkoutScreen: View {
             Button(L("Stop and show result"), role: .destructive) { engine.abort() }
             Button(L("Keep going"), role: .cancel) {}
         }
+        // A rep only beeps, and the phone is on the floor. Everyone else can
+        // glance at the number; VoiceOver users get it spoken. Rounds and
+        // exercise changes are already announced by the engine for everyone.
+        .onChange(of: engine.repCount) { previous, reps in
+            guard voiceOverEnabled, reps > previous, !engine.exercise.isHold else { return }
+            AccessibilityNotification.Announcement(
+                L("\(reps) of \(engine.plan.target(for: engine.exercise))")).post()
+        }
+    }
+
+    private var layout: some View {
+        VStack(spacing: 12) {
+            topBar
+            Spacer(minLength: 0)
+            timer
+            exerciseBlock
+            Spacer(minLength: 0)
+            statusLine
+            if showPreview {
+                CameraPreviewView(session: engine.camera.session)
+                    .frame(width: 120, height: 160)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            controls
+        }
+        .padding()
     }
 
     private var topBar: some View {
@@ -98,29 +118,52 @@ private struct WorkoutScreen: View {
             } label: {
                 Image(systemName: showPreview ? "video.fill" : "video.slash")
             }
+            .accessibilityLabel(showPreview ? L("Hide camera preview") : L("Show camera preview"))
             .padding(.leading, 8)
         }
     }
 
     private var timer: some View {
-        Text(WorkoutScreen.format(engine.remaining))
-            .font(.system(size: 96, weight: .bold, design: .rounded).monospacedDigit())
-            .foregroundStyle(engine.remaining <= 60 ? Color.red : Color.primary)
+        VStack(spacing: 0) {
+            Text(WorkoutScreen.format(engine.remaining))
+                .font(.system(size: 96, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(isLastMinute ? Color.red : Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            // Red alone says nothing to someone who cannot tell it apart.
+            if isLastMinute {
+                Text(L("Last minute"))
+                    .font(.subheadline.weight(.semibold))
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
+
+    private var isLastMinute: Bool { engine.remaining <= 60 }
 
     private var exerciseBlock: some View {
         VStack(spacing: 4) {
             Text(engine.exercise.displayName)
                 .font(.system(size: 40, weight: .semibold, design: .rounded))
                 .foregroundStyle(.brand)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(verbatim: engine.exercise.isHold ? "\(Int(engine.heldSeconds ?? 0))" : "\(engine.repCount)")
                     .font(.system(size: 140, weight: .black, design: .rounded).monospacedDigit())
-                    .contentTransition(.numericText())
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
                 Text(verbatim: "/ \(engine.plan.target(for: engine.exercise))\(engine.exercise.isHold ? " " + L("unit.seconds") : "")")
                     .font(.system(size: 40, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
             }
+            // "7 / 10" read out as "seven slash ten" is noise; say what it is.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(engine.exercise.displayName)
+            .accessibilityValue(L("\(engine.exercise.isHold ? Int(engine.heldSeconds ?? 0) : engine.repCount) of \(engine.plan.target(for: engine.exercise))"))
             if engine.exercise.isHold {
                 ProgressView(value: min(engine.heldSeconds ?? 0, Double(engine.plan.target(for: engine.exercise))),
                              total: Double(engine.plan.target(for: engine.exercise)))
@@ -149,16 +192,27 @@ private struct WorkoutScreen: View {
         .padding(.vertical, 10)
         .background(Color.brand, in: Capsule())
         .foregroundStyle(.onBrand)
-        .transition(.scale.combined(with: .opacity))
+        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
     }
 
+    /// The colour sits on the icons only. System green on white is 2.2:1, too
+    /// faint for footnote text, and the icon and the words already change
+    /// with the state, so nothing depends on seeing the colour.
     private var statusLine: some View {
         HStack(spacing: 16) {
-            Label(engine.faceDetected ? L("Face") : L("No face"),
-                  systemImage: engine.faceDetected ? "face.smiling" : "face.dashed")
-                .foregroundStyle(engine.faceDetected ? Color.green : Color.brand)
-            Label(statusText, systemImage: engine.isSignalArmed ? "waveform.path.ecg" : "hourglass")
-                .foregroundStyle(engine.isSignalArmed ? .green : .secondary)
+            Label {
+                Text(engine.faceDetected ? L("Face") : L("No face"))
+            } icon: {
+                Image(systemName: engine.faceDetected ? "face.smiling" : "face.dashed")
+                    .foregroundStyle(engine.faceDetected ? Color.green : Color.brand)
+            }
+            Label {
+                Text(statusText)
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: engine.isSignalArmed ? "waveform.path.ecg" : "hourglass")
+                    .foregroundStyle(engine.isSignalArmed ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+            }
         }
         .font(.footnote)
     }
@@ -186,6 +240,10 @@ private struct WorkoutScreen: View {
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.bordered)
+                // "−1" is a typographic minus, which neither VoiceOver nor
+                // Voice Control reads as anything sayable.
+                .accessibilityLabel(L("One rep less"))
+                .accessibilityInputLabels([L("One rep less"), L("Minus one")])
                 Button {
                     engine.adjust(by: 1)
                 } label: {
@@ -195,6 +253,8 @@ private struct WorkoutScreen: View {
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel(L("One rep more"))
+                .accessibilityInputLabels([L("One rep more"), L("Plus one")])
             }
             HStack(spacing: 16) {
                 Button {
@@ -204,7 +264,7 @@ private struct WorkoutScreen: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                 }
-                .buttonStyle(.borderedProminent)
+                .brandProminentButtonStyle()
                 .disabled(engine.phase == .countdown || engine.phase == .finished)
                 Button(role: .destructive) {
                     confirmAbort = true
@@ -228,7 +288,9 @@ private struct WorkoutScreen: View {
                     .foregroundStyle(.secondary)
                 Text(verbatim: "\(engine.countdownValue)")
                     .font(.system(size: 180, weight: .black, design: .rounded))
-                    .contentTransition(.numericText())
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
                 Text(L("Starting with \(engine.plan.first.displayName): hold still in the start position first"))
                     .foregroundStyle(.secondary)
             }
@@ -271,7 +333,7 @@ private struct WorkoutScreen: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .brandProminentButtonStyle()
                 }
                 .controlSize(.large)
             }
@@ -287,7 +349,7 @@ private struct WorkoutScreen: View {
                 Image(systemName: "camera.fill").font(.system(size: 60))
                 Text(message).multilineTextAlignment(.center)
                 Button(L("Back")) { dismiss() }
-                    .buttonStyle(.borderedProminent)
+                    .brandProminentButtonStyle()
             }
             .padding()
         }

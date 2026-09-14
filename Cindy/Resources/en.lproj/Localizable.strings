@@ -28,7 +28,7 @@
 "Calibration saved" = "Calibration saved";
 "Calibration, workout plan and history live in the app's storage. They may be part of your personal iPhone backup and are removed when you delete the app." = "Calibration, workout plan and history live in the app's storage. They may be part of your personal iPhone backup and are removed when you delete the app.";
 "Cancel" = "Cancel";
-"Cindy calls out every rep, so you never have to look at the screen." = "Cindy calls out every rep, so you never have to look at the screen.";
+"Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen." = "Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen.";
 "Cindy counts for you" = "Cindy counts for you";
 "Cindy has no servers, no accounts and never opens an internet connection. Your data only leaves the device if you share it yourself." = "Cindy has no servers, no accounts and never opens an internet connection. Your data only leaves the device if you share it yourself.";
 "Cindy is a CrossFit benchmark workout: one round is %@. You repeat that round as often as you can in %lld minutes — that is what AMRAP means." = "Cindy is a CrossFit benchmark workout: one round is %@. You repeat that round as often as you can in %lld minutes — that is what AMRAP means.";
@@ -211,3 +211,17 @@
 "Your score is rounds plus the reps of the round you did not finish. The plan is yours to change at any time." = "Your score is rounds plus the reps of the round you did not finish. The plan is yours to change at any time.";
 "Ø %lld s per round" = "Ø %lld s per round";
 "“Automatic” follows the device setting." = "“Automatic” follows the device setting.";
+
+/* MARK: - Accessibility */
+"%lld of %lld" = "%lld of %lld";
+"Hide camera preview" = "Hide camera preview";
+"Show camera preview" = "Show camera preview";
+"Last minute" = "Last minute";
+"One rep less" = "One rep less";
+"One rep more" = "One rep more";
+"Minus one" = "Minus one";
+"Plus one" = "Plus one";
+"Pause movement" = "Pause movement";
+"Play movement" = "Play movement";
+"Remove %@" = "Remove %@";
+"Share recording" = "Share recording";

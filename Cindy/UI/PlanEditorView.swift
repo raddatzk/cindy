@@ -68,6 +68,7 @@ struct PlanEditorView: View {
                 Image(systemName: "minus.circle")
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(L("Remove \(set.exercise.displayName)"))
             .disabled(model.plan.sets.count == 1)
         }
     }

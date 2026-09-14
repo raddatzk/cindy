@@ -13,6 +13,7 @@ struct OnboardingView: View {
 
     @State private var page = Page.welcome
     @State private var demoExercise: Exercise?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Page: Int, CaseIterable {
         case welcome, counting, setup, movements, calibration
@@ -61,7 +62,7 @@ struct OnboardingView: View {
             bullet("arrow.down.to.line", L("Phone on the floor below you, screen facing up."))
             bullet("angle", L("Better: tilt it 30–45°, for example against a weight plate. That improves the signal a lot."))
             bullet("tshirt", L("Train in the clothes you calibrated in, without a cap or hood."))
-            bullet("speaker.wave.2", L("Cindy calls out every rep, so you never have to look at the screen."))
+            bullet("speaker.wave.2", L("Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen."))
         }
     }
 
@@ -102,7 +103,7 @@ struct OnboardingView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .brandProminentButtonStyle()
             .controlSize(.large)
 
             Button(page == .calibration ? L("Not now") : L("Skip")) { finish() }
@@ -121,7 +122,7 @@ struct OnboardingView: View {
 
     private func advance() {
         guard page == .calibration else {
-            withAnimation { page = Page(rawValue: page.rawValue + 1) ?? .calibration }
+            withAnimation(reduceMotion ? nil : .default) { page = Page(rawValue: page.rawValue + 1) ?? .calibration }
             return
         }
         let calibrate = onCalibrate
@@ -183,8 +184,12 @@ struct OnboardingView: View {
 /// A face that drifts closer and further away — the signal Cindy actually
 /// measures, as a picture.
 private struct PulsingFaceIcon: View {
+    /// Held still with Reduce Motion: this one is an illustration, not a demo
+    /// anyone needs to see move.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
             let phase = StickFigureDemoView.phase(at: context.date, cycle: 2.4)
             ZStack {
                 Image(systemName: "iphone.gen3")

@@ -8,13 +8,17 @@ description. It is a registered trademark, and guideline 5.2.1 covers all of
 them. The workout is described by what it is instead: 20 minutes, three
 bodyweight movements, as many rounds as possible.
 
+The name is the same in both languages: "Cindy - Wiederholungen & Runden" would
+be 31 characters. Words that are already in the name or the subtitle are left
+out of the keywords, because App Store search indexes all three together.
+
 ## App information
 
 | Field | Value |
 |-------|-------|
-| Name | Cindy Rep Counter |
+| Name | Cindy - Reps & Rounds |
 | Bundle ID | `me.raddatz.cindy` |
-| SKU | `cindy-ios` |
+| SKU | `cindy` |
 | Primary language | English (U.S.) |
 | Category | Health & Fitness |
 | Secondary category | *(none)* |
@@ -33,7 +37,7 @@ Hands-free rep counting
 **Keywords**
 
 ```
-amrap,reps,pull-up,push-up,squat,plank,bodyweight,calisthenics,wod,counter,timer,gym,home workout
+amrap,hiit,pull-up,push-up,squat,plank,bodyweight,calisthenics,wod,counter,timer,gym,home workout
 ```
 
 **Promotional text**
@@ -173,6 +177,35 @@ Uhr, kein Brustgurt, kein Gerät außer der Stange.
 Cindy ist eine Trainingshilfe und kein Medizinprodukt. Die Bereitschaftsanzeige
 ist ein grober Anhaltspunkt aus trainingswissenschaftlichen Faustregeln, keine
 Diagnose und keine medizinische Beratung.
+```
+
+## TestFlight
+
+**Beta App Description**
+
+```
+Cindy counts the reps of a 20-minute bodyweight workout — pull-ups, push-ups
+and squats — through the front camera, with the phone lying on the floor. It
+calibrates to your own movement first, keeps the clock, and suggests the next
+session afterwards. Everything is processed on the device; nothing is uploaded.
+```
+
+**What to Test**
+
+```
+Thank you for testing. What matters most in this build is whether the counting
+is right.
+
+1. Run the calibration once, with the phone flat on the floor under your
+   pull-up bar, front camera facing up.
+2. Do a workout, the full 20 minutes or a shortened one from "Edit
+   workout".
+3. Afterwards, tell us how many reps you actually did in one round compared
+   with what Cindy counted, and in which exercise it went wrong.
+
+Also useful: where you put the phone, the lighting, and whether you wore a cap
+or glasses. If counting was off, turn on Settings › Record workouts: the next
+session writes a numbers-only log you can share from Settings › Recordings.
 ```
 
 ## App Review notes

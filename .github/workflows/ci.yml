@@ -1,0 +1,97 @@
+name: CI
+
+# Every push to main and every pull request. Nothing here signs anything, so
+# it needs no secrets and keeps running even if the certificates expire.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run pointless. macOS
+# minutes bill at ten times the rate of Linux, so cancel rather than queue.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # GitHub-hosted, not the self-hosted Mac. This repository is public, so
+    # anyone can open a pull request, and a self-hosted runner would execute
+    # their code as a real user on a real machine — home directory, ssh keys,
+    # unlocked login keychain and all. Standard hosted runners are free for
+    # public repositories, so the only thing this costs is wall-clock time.
+    # Nothing here signs anything, so a runner without any certificate is fine.
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image ships several Xcodes. Take the newest and say out loud
+      # which one it was, because GitHub rolls the image forward on its own
+      # schedule and a quiet move to an older Xcode would otherwise fail much
+      # later with a confusing SDK error.
+      - name: Select Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+          major=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
+          if [ "$major" -lt 26 ]; then
+            echo "::error::Xcode $major is too old — project.yml declares xcodeVersion 26."
+            exit 1
+          fi
+
+      # The .xcodeproj is git-ignored; project.yml is the only source of truth.
+      - name: Generate the project
+        run: |
+          brew install xcodegen xcbeautify
+          xcodegen generate
+
+      # Cheap, catches the most common drift: a new L("…") without its German
+      # line. Runs before the build so a missing translation is not buried
+      # under twenty minutes of compiling.
+      - name: Check the string catalogs
+        run: python3 tools/check_localization.py
+
+      # Named simulators come and go with every Xcode release, so resolve
+      # whatever iPhone this runner actually has instead of hard-coding one.
+      - name: Pick a simulator
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available \
+            | grep -E '^[[:space:]]+iPhone' \
+            | tail -1 \
+            | sed -E 's/^.*\(([0-9A-Fa-f-]{36})\).*$/\1/')
+          if [ -z "$udid" ]; then
+            echo "::error::No iPhone simulator available on this runner."
+            exit 1
+          fi
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | grep -F "$udid"
+
+      # The camera does not exist in the simulator; these are the pure
+      # pipeline tests, which replay CSV fixtures through the detector.
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Cindy.xcodeproj \
+            -scheme Cindy \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            | xcbeautify --renderer github-actions
+        shell: bash
+
+      # Release configuration as well, because Debug-only code and `#if DEBUG`
+      # blocks hide compile errors that would first show up when archiving.
+      - name: Build for release
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Cindy.xcodeproj \
+            -scheme Cindy \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+        shell: bash

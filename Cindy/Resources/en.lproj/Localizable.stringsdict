@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>%lld minutes left</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@minutes@</string>
+		<key>minutes</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>one minute left</string>
+			<key>other</key>
+			<string>%lld minutes left</string>
+		</dict>
+	</dict>
+	<key>%lld seconds left</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@seconds@</string>
+		<key>seconds</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>one second left</string>
+			<key>other</key>
+			<string>%lld seconds left</string>
+		</dict>
+	</dict>
+	<key>%lld rounds + %lld reps · %lld total reps</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@rounds@ + %2$#@reps@ · %3$#@total@</string>
+		<key>rounds</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld round</string>
+			<key>other</key>
+			<string>%lld rounds</string>
+		</dict>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+		<key>total</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld total rep</string>
+			<key>other</key>
+			<string>%lld total reps</string>
+		</dict>
+	</dict>
+	<key>%lld reps</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>+%lld reps</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>+%#@reps@</string>
+		<key>reps</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld rep</string>
+			<key>other</key>
+			<string>%lld reps</string>
+		</dict>
+	</dict>
+	<key>Time. %lld rounds plus %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Time. %1$#@rounds@ plus %2$lld</string>
+		<key>rounds</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld round</string>
+			<key>other</key>
+			<string>%lld rounds</string>
+		</dict>
+	</dict>
+	<key>Full Cindy, pace steady. Target next time: %lld rounds.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Full Cindy, pace steady. Target next time: %#@rounds@.</string>
+		<key>rounds</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld round</string>
+			<key>other</key>
+			<string>%lld rounds</string>
+		</dict>
+	</dict>
+	<key>Finish the full %lld minutes first, then step up.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Finish the %#@minutes@ first, then step up.</string>
+		<key>minutes</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>full %lld minute</string>
+			<key>other</key>
+			<string>full %lld minutes</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

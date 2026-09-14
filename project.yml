@@ -1,0 +1,89 @@
+name: Cindy
+options:
+  bundleIdPrefix: me.raddatz
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  developmentLanguage: en
+  knownRegions: [en, de]
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: MDQY93XVHF
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Cindy:
+    type: application
+    platform: iOS
+    sources:
+      - path: Cindy
+    info:
+      path: Cindy/Info.plist
+      properties:
+        CFBundleDisplayName: Cindy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - me.raddatz.cindy.refresh
+        NSCameraUsageDescription: "Cindy uses the front camera to count reps during calibration and your workout. Frames are analyzed on device only, and are neither stored nor transmitted."
+        NSHealthUpdateUsageDescription: "Cindy writes your finished workouts to Apple Health so they show up in Fitness next to your other training."
+        NSHealthShareUsageDescription: "Cindy reads your sleep, resting pulse, heart rate variability and body weight to estimate how ready you are for the next workout. Nothing else is read, and the values stay on the device."
+    entitlements:
+      path: Cindy/Cindy.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.raddatz.cindy
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  CindyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CindyTests
+    dependencies:
+      - target: Cindy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.raddatz.cindy.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Cindy:
+    build:
+      targets:
+        Cindy: all
+        CindyTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - CindyTests
+    profile:
+      config: Release
+    archive:
+      config: Release

@@ -1,0 +1,238 @@
+/* German translations. Keys are the English source strings.
+   Plural forms live in Localizable.stringsdict. */
+
+/* MARK: - Exercises and units */
+"exercise.pullUp.singular" = "Klimmzug";
+"exercise.pullUp.plural" = "Klimmzüge";
+"exercise.pushUp.singular" = "Liegestütz";
+"exercise.pushUp.plural" = "Liegestütze";
+"exercise.squat.singular" = "Kniebeuge";
+"exercise.squat.plural" = "Kniebeugen";
+"exercise.plank.singular" = "Plank";
+"exercise.plank.plural" = "Plank";
+"unit.reps" = "Wdh.";
+"unit.seconds" = "s";
+
+/* MARK: - Plan */
+"%lld %@" = "%1$lld %2$@";
+"%lld s %@" = "%1$lld s %2$@";
+"%lld min · %@" = "%1$lld min · %2$@";
+"AMRAP %lld min" = "AMRAP %lld min";
+"Edit workout" = "Workout anpassen";
+"Duration" = "Dauer";
+"Exercises per round" = "Übungen pro Runde";
+"Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.";
+"Not in the plan" = "Nicht im Plan";
+"Add %@" = "%@ hinzufügen";
+"Reset to the original Cindy" = "Auf Original Cindy zurücksetzen";
+
+/* MARK: - Start screen */
+"Start workout" = "Workout starten";
+"Calibrate" = "Kalibrieren";
+"Recalibrate" = "Neu kalibrieren";
+"Not calibrated" = "Nicht kalibriert";
+"Missing: %@" = "Fehlt: %@";
+"History" = "Historie";
+"Last %@" = "Zuletzt %@";
+
+/* MARK: - Settings */
+"Settings" = "Einstellungen";
+"Display" = "Darstellung";
+"Language" = "Sprache";
+"Appearance" = "Erscheinungsbild";
+"Automatic" = "Automatisch";
+"Light" = "Hell";
+"Dark" = "Dunkel";
+"“Automatic” follows the device setting." = "„Automatisch“ folgt der Geräteeinstellung.";
+"Privacy" = "Datenschutz";
+"No video or photo recording" = "Keine Video- oder Bildaufnahmen";
+"The camera only runs during calibration and your workout. Every frame is analyzed on the iPhone right away and then discarded. No photos or videos are stored." = "Die Kamera wird nur während Kalibrierung und Workout eingeschaltet. Jedes Bild wird sofort auf dem iPhone ausgewertet und danach verworfen. Es werden keine Fotos oder Videos gespeichert.";
+"Nothing is sent anywhere" = "Nichts wird verschickt";
+"Cindy has no servers, no accounts and never opens an internet connection. Your data only leaves the device if you share it yourself." = "Cindy hat keine Server, keine Accounts und baut keine Internetverbindung auf. Deine Daten verlassen das Gerät nur, wenn du selbst etwas über Teilen weitergibst.";
+"What is stored locally" = "Was lokal gespeichert wird";
+"Calibration, workout plan and history live in the app's storage. They may be part of your personal iPhone backup and are removed when you delete the app." = "Kalibrierung, Workout-Plan und Historie liegen im Speicher der App. Sie können in deinem persönlichen iPhone-Backup enthalten sein und werden beim Löschen der App entfernt.";
+"Signal recordings" = "Signal-Aufnahmen";
+"Record workouts" = "Workouts mitschneiden";
+"Recordings" = "Aufnahmen";
+"Writes a CSV file during every workout with measurements such as face size, signal and rep count. It contains only numbers and state, no images. Helps with debugging when counting goes wrong. About %@ per 20 minutes." = "Schreibt während jedes Workouts eine CSV-Datei mit Messwerten wie Gesichtsgröße, Signal und Zählerstand. Sie enthält nur Zahlen und Zustandsangaben, keine Bilder. Hilft bei der Fehlersuche, wenn falsch gezählt wird. Etwa %@ pro 20 Minuten.";
+"No recordings" = "Keine Aufnahmen";
+"Turn on “Record workouts” and do a workout." = "Schalte „Workouts mitschneiden“ ein und mach ein Workout.";
+"Version" = "Version";
+
+/* MARK: - Calibration */
+"Calibration" = "Kalibrierung";
+"How it works" = "So funktioniert’s";
+"Phone flat on the floor under the pull-up bar, screen facing up." = "Handy flach auf den Boden unter die Klimmzugstange, Display nach oben.";
+"Recommended: tilt the phone slightly (30–45°), for example leaning against a weight plate. This improves the signal a lot." = "Empfohlen: Handy leicht ankippen (30–45°), z. B. gegen eine Hantelscheibe lehnen. Das verbessert das Signal deutlich.";
+"Calibrate in your workout clothes, without a cap or hood." = "In Trainingskleidung kalibrieren, ohne Cap oder Kapuze.";
+"One rep of each, one after another: %@. Hold still in the start position before every countdown." = "Nacheinander je eine Wiederholung: %@. Vor jedem Countdown in der Ausgangsposition ruhig bleiben.";
+"Everything stays on the device. No images are stored." = "Alles bleibt auf dem Gerät. Es werden keine Bilder gespeichert.";
+"Step %lld of %lld" = "Schritt %1$lld von %2$lld";
+"Start (%lld/%lld)" = "Start (%1$lld/%2$lld)";
+"Hold the start position" = "Ausgangsposition halten";
+"Now: 1 %@" = "Jetzt: 1 %@";
+"Now: hold the plank still" = "Jetzt: Plank ruhig halten";
+"Detected" = "Erkannt";
+"Not detected" = "Nicht erkannt";
+"%@ s" = "%@ s";
+"Signal" = "Signal";
+"Thresholds" = "Schwellen";
+"Direction" = "Richtung";
+"Deflection upward" = "Ausschlag nach oben";
+"Deflection downward" = "Ausschlag nach unten";
+"Repeat" = "Wiederholen";
+"Continue" = "Weiter";
+"Done" = "Fertig";
+"Calibration saved" = "Kalibrierung gespeichert";
+"Calibration complete" = "Kalibrierung abgeschlossen";
+"Back to start" = "Zum Start";
+"Open Settings" = "Einstellungen öffnen";
+"Face detected" = "Gesicht erkannt";
+"No face in frame" = "Kein Gesicht im Bild";
+"Hang from the bar with straight arms and stay still. After the countdown: one pull-up until your chin is over the bar, then hang all the way down again." = "Häng dich mit gestreckten Armen an die Stange und bleib ruhig. Nach dem Countdown: ein Klimmzug bis das Kinn über der Stange ist, dann wieder ganz aushängen.";
+"Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top." = "Geh in die Liegestützposition mit gestreckten Armen, Gesicht über dem Handy. Nach dem Countdown: ein Liegestütz, dann wieder oben bleiben.";
+"Stand over or right next to the phone and look towards the camera. After the countdown: one squat, then stand up straight again." = "Stell dich über bzw. direkt neben das Handy und schau Richtung Kamera. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.";
+"Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds." = "Geh in die Plank-Position, Gesicht über dem Handy, und bleib ruhig. Nach dem Countdown die Position 3 Sekunden halten.";
+"No face detected. Check light and position: your face has to be above the camera. Tilt the phone slightly (30–45°)." = "Kein Gesicht erkannt. Prüfe Licht und Position: Das Gesicht muss über der Kamera sein. Kippe das Handy leicht an (30–45°).";
+"The movement was too weak in the signal. Get closer to the camera, tilt the phone more; for pull-ups put the phone directly under the bar." = "Die Bewegung war zu schwach im Signal. Näher an die Kamera, Handy stärker ankippen; bei Klimmzügen das Handy direkt unter die Stange legen.";
+"The movement was detected but the start position was not reached again. Please start and end in the start position." = "Die Bewegung wurde erkannt, aber die Ausgangsposition nicht wieder erreicht. Bitte in der Ausgangsposition starten und dort wieder enden.";
+"The rep took %@ s. Plausible is %@–%@ s. Please repeat at a normal pace." = "Die Wiederholung dauerte %1$@ s. Plausibel sind %2$@–%3$@ s. Bitte in normalem Tempo wiederholen.";
+"The calibration could not be saved: %@" = "Kalibrierung konnte nicht gespeichert werden: %@";
+
+/* MARK: - Workout */
+"Workout" = "Workout";
+"Round %lld" = "Runde %lld";
+"Round %lld. %@" = "Runde %1$lld. %2$@";
+"REC" = "REC";
+"Up next: %@" = "Danach: %@";
+"Now do" = "Weiter mit";
+"Face" = "Gesicht";
+"No face" = "Kein Gesicht";
+"Body Pose" = "Body Pose";
+"Waiting for start position" = "Warte auf Ausgangsposition";
+"Hold" = "Halten";
+"Counting" = "Zählt";
+"Signal lost" = "Signal verloren";
+"Paused" = "Pause";
+"Pause" = "Pause";
+"Resume" = "Weiter";
+"Stop" = "Abbrechen";
+"Cancel" = "Abbrechen";
+"Back" = "Zurück";
+"Stop workout?" = "Workout abbrechen?";
+"Stop and show result" = "Abbrechen und Ergebnis anzeigen";
+"Keep going" = "Weitermachen";
+"Get ready" = "Bereit machen";
+"Starting with %@: hold still in the start position first" = "Start mit %@: erst ruhig in der Ausgangsposition bleiben";
+"Go" = "Los";
+"No complete calibration available." = "Keine vollständige Kalibrierung vorhanden.";
+"No access to the camera. Please allow it in Settings." = "Kein Zugriff auf die Kamera. Bitte in den Einstellungen erlauben.";
+"No front camera found." = "Keine Frontkamera gefunden.";
+"The camera could not be configured: %@" = "Kamera konnte nicht konfiguriert werden: %@";
+
+/* MARK: - Result and history */
+"Result" = "Ergebnis";
+"Time!" = "Zeit!";
+"Stopped" = "Abgebrochen";
+"Save" = "Speichern";
+"Discard" = "Verwerfen";
+"Previous result: %@" = "Letztes Ergebnis: %@";
+"First saved workout" = "Erstes gespeichertes Workout";
+"Next time" = "Nächstes Mal";
+"Adopt into plan" = "In den Plan übernehmen";
+"Adopted" = "Übernommen";
+"No workouts yet" = "Noch keine Workouts";
+"Saved results show up here." = "Gespeicherte Ergebnisse erscheinen hier.";
+"stopped after %@" = "abgebrochen nach %@";
+
+/* MARK: - Round chart */
+"Round times" = "Rundenzeiten";
+"Reserve %@" = "Reserve %@";
+"No round times recorded." = "Keine Rundenzeiten aufgezeichnet.";
+"Ø %lld s per round" = "Ø %lld s pro Runde";
+"fastest %lld s · slowest %lld s" = "schnellste %1$lld s · langsamste %2$lld s";
+
+/* MARK: - Progression advice */
+"Rounds dropped from %lld to %lld. Back to the previous plan." = "Runden sind von %1$lld auf %2$lld gefallen. Zurück auf den vorherigen Plan.";
+"Too few rounds to judge. Keep the plan." = "Zu wenige Runden für eine Bewertung. Plan beibehalten.";
+"Last quarter only %@ of the first. Keep the plan until the pace holds throughout." = "Letztes Viertel nur %@ vom ersten. Plan halten, bis das Tempo durchgehend steht.";
+"Pace steady (%@). Raise the time to %lld minutes." = "Tempo stabil (%1$@). Zeit auf %2$lld Minuten erhöhen.";
+"Pace steady (%@). %@ up to %lld per round." = "Tempo stabil (%1$@). %2$@ auf %3$lld pro Runde.";
+"Sets are at Cindy level. Plank up to %lld s." = "Sets auf Cindy-Niveau. Plank auf %lld s.";
+
+/* MARK: - Apple Health */
+"Apple Health" = "Apple Health";
+"Sync to Apple Health" = "Mit Apple Health synchronisieren";
+"Export earlier workouts" = "Frühere Workouts übertragen";
+"Apple Health is not available on this device." = "Apple Health ist auf diesem Gerät nicht verfügbar.";
+"Cindy may not write to Apple Health. Allow it in Settings › Apps › Health › Data Access." = "Cindy darf nicht in Apple Health schreiben. Erlaube es in Einstellungen › Apps › Health › Datenzugriff.";
+"The workout could not be written to Apple Health." = "Das Workout konnte nicht in Apple Health geschrieben werden.";
+
+/* MARK: - Intro and exercise demos */
+"Start hanging with straight arms — that is the position calibration measures." = "Start im Hang mit gestreckten Armen — genau diese Position misst die Kalibrierung.";
+"Pull until your chin is above the bar, then lower all the way down again." = "Zieh dich hoch, bis das Kinn über der Stange ist, dann wieder ganz ablassen.";
+"Phone on the floor under the bar, screen facing up." = "Handy auf den Boden unter die Stange, Display nach oben.";
+"Start at the top with straight arms, face above the phone." = "Start oben mit gestreckten Armen, Gesicht über dem Handy.";
+"Lower until your chest is just off the floor, then press back up." = "Runter, bis die Brust knapp über dem Boden ist, dann wieder hochdrücken.";
+"Keep your body one straight line — sagging hips change the signal." = "Der Körper bleibt eine gerade Linie — ein durchhängendes Becken verändert das Signal.";
+"Stand over or right next to the phone and look towards the camera." = "Stell dich über oder direkt neben das Handy und schau Richtung Kamera.";
+"Squat until your hips are at least level with your knees, then stand up tall." = "Geh mindestens so tief, dass die Hüfte auf Kniehöhe ist, dann ganz aufrichten.";
+"Your face has to stay in frame the whole way down." = "Dein Gesicht muss auf dem ganzen Weg nach unten im Bild bleiben.";
+"Forearms on the floor, elbows under your shoulders, face above the phone." = "Unterarme auf dem Boden, Ellbogen unter den Schultern, Gesicht über dem Handy.";
+"Hold still — Cindy runs the clock as long as your face keeps the same distance." = "Ruhig halten — Cindy lässt die Uhr laufen, solange dein Gesicht den Abstand hält.";
+"Shoulders, hips and heels stay in one line." = "Schultern, Hüfte und Fersen bleiben auf einer Linie.";
+"Show me the movement" = "Bewegung ansehen";
+"Show the %@ movement" = "Bewegung für %@ ansehen";
+"Welcome to Cindy" = "Willkommen bei Cindy";
+"Cindy is a CrossFit benchmark workout: one round is %@. You repeat that round as often as you can in %lld minutes — that is what AMRAP means." = "Cindy ist ein CrossFit-Benchmark-Workout. Eine Runde: %1$@. Diese Runde wiederholst du in %2$lld Minuten so oft wie möglich — dafür steht AMRAP.";
+"Your score is rounds plus the reps of the round you did not finish. The plan is yours to change at any time." = "Dein Score sind die Runden plus die Wiederholungen der angefangenen Runde. Den Plan kannst du jederzeit anpassen.";
+"Cindy counts for you" = "Cindy zählt für dich";
+"Put the phone down and train. The front camera watches how large your face is in the picture — that changes with every rep, and Cindy turns it into a count." = "Handy hinlegen und trainieren. Die Frontkamera misst, wie groß dein Gesicht im Bild ist — das ändert sich mit jeder Wiederholung, und daraus zählt Cindy.";
+"Every frame is analyzed on the iPhone and discarded right away. No photos, no video, no internet connection." = "Jedes Bild wird direkt auf dem iPhone ausgewertet und sofort verworfen. Keine Fotos, kein Video, keine Internetverbindung.";
+"Where the phone goes" = "Wohin das Handy kommt";
+"Phone on the floor below you, screen facing up." = "Handy auf den Boden unter dich, Display nach oben.";
+"Better: tilt it 30–45°, for example against a weight plate. That improves the signal a lot." = "Besser: um 30–45° anwinkeln, zum Beispiel an eine Hantelscheibe gelehnt. Das verbessert das Signal deutlich.";
+"Train in the clothes you calibrated in, without a cap or hood." = "Trainiere in der Kleidung, in der du kalibriert hast, ohne Mütze oder Kapuze.";
+"Cindy calls out every rep, so you never have to look at the screen." = "Cindy sagt jede Wiederholung an — du musst nie auf das Display schauen.";
+"This is what a rep looks like" = "So sieht eine Wiederholung aus";
+"Exercise" = "Übung";
+"Tap through the exercises. The phone in the drawing shows where it has to lie for Cindy to see your face." = "Tipp dich durch die Übungen. Das Handy in der Zeichnung zeigt, wo es liegen muss, damit Cindy dein Gesicht sieht.";
+"One calibration first" = "Zuerst einmal kalibrieren";
+"Everybody moves differently, so Cindy measures you once: one rep of each exercise, one after another. It takes about two minutes." = "Jeder bewegt sich anders, deshalb misst Cindy dich einmal aus: eine Wiederholung pro Übung, nacheinander. Das dauert etwa zwei Minuten.";
+"Repeat it when you change where the phone lies, or when counting starts to drift." = "Wiederhol das, wenn du das Handy anders hinlegst oder die Zählung ungenau wird.";
+"Not now" = "Später";
+"Skip" = "Überspringen";
+"Start calibration" = "Kalibrierung starten";
+"How Cindy works" = "Wie Cindy funktioniert";
+"The introduction from the first launch: how the counting works, where the phone goes and what each exercise looks like." = "Die Einführung vom ersten Start: wie gezählt wird, wohin das Handy kommt und wie jede Übung aussieht.";
+
+/* MARK: - Readiness */
+"Saved workouts are written to Health as cross-training sessions with one segment per round. Cindy also reads sleep, resting pulse, HRV and body weight — for the readiness estimate and the energy calculation, nothing else. With the switch off Cindy does not touch Health at all." = "Gespeicherte Workouts landen als Cross-Training in Health, mit einem Abschnitt pro Runde. Cindy liest außerdem Schlaf, Ruhepuls, HRV und Körpergewicht – für die Bereitschafts-Schätzung und die Energieberechnung, sonst nichts. Mit ausgeschaltetem Schalter rührt Cindy Health gar nicht an.";
+"Readiness" = "Bereitschaft";
+"Readiness %lld of 100" = "Bereitschaft %lld von 100";
+"Rest day" = "Ruhetag";
+"Take it easy" = "Locker angehen";
+"Ready" = "Bereit";
+"Primed" = "Topfit";
+"Your body is still working on the last session. Walk, stretch, sleep." = "Dein Körper arbeitet noch am letzten Workout. Spazieren, dehnen, schlafen.";
+"Something short is fine — cut the duration or the reps." = "Etwas Kurzes ist okay – nimm Dauer oder Wiederholungen zurück.";
+"Go for your usual plan." = "Zieh deinen normalen Plan durch.";
+"A good day to push the plan one notch." = "Guter Tag, um den Plan eine Stufe höher zu setzen.";
+"Estimated from your workout history alone — connect Apple Health for sleep and heart data." = "Nur aus deinem Verlauf geschätzt – verbinde Apple Health für Schlaf- und Herzdaten.";
+"%lld h since the last workout, %lld h suggested" = "%1$lld h seit dem letzten Workout, empfohlen sind %2$lld h";
+"This week's volume is %@× your average" = "Umfang dieser Woche: %@× dein Schnitt";
+"%@ h of sleep last night" = "%@ h Schlaf letzte Nacht";
+"HRV %lld ms, your average %lld ms" = "HRV %1$lld ms, dein Schnitt %2$lld ms";
+"Resting pulse %lld bpm, your average %lld bpm" = "Ruhepuls %1$lld bpm, dein Schnitt %2$lld bpm";
+
+/* MARK: - Reminder */
+"Reminder" = "Erinnerung";
+"Remind me" = "Erinnere mich";
+"Next reminder" = "Nächste Erinnerung";
+"Next session %@" = "Nächstes Training %@";
+"Notifications are switched off for Cindy. Turn them on in Settings › Apps › Cindy › Notifications." = "Mitteilungen sind für Cindy ausgeschaltet. Schalte sie in Einstellungen › Apps › Cindy › Mitteilungen ein.";
+"Cindy picks the moment from how hard the last session was, how you have recovered and when you usually train — and moves it when your body says so. It is scheduled on the device; nothing is sent anywhere." = "Cindy wählt den Zeitpunkt danach, wie hart das letzte Workout war, wie du dich erholt hast und wann du sonst trainierst – und verschiebt ihn, wenn dein Körper das sagt. Geplant wird auf dem Gerät, verschickt wird nichts.";
+"Time for Cindy" = "Zeit für Cindy";
+"You should be recovered. Ready for the next round?" = "Du solltest erholt sein. Bereit für die nächste Runde?";
+"A little later than usual — your body was still catching up." = "Etwas später als sonst – dein Körper war noch am Aufholen.";
+"Your body asked for an extra day. Now you should be good to go." = "Dein Körper wollte einen Tag extra. Jetzt sollte es passen.";

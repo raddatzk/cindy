@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "Cindy nutzt die Frontkamera, um während Kalibrierung und Workout Wiederholungen zu zählen. Die Bilder werden nur auf dem Gerät ausgewertet und weder gespeichert noch übertragen.";
+"NSHealthUpdateUsageDescription" = "Cindy schreibt deine beendeten Workouts in Apple Health, damit sie in Fitness neben deinem übrigen Training auftauchen.";
+"NSHealthShareUsageDescription" = "Cindy liest Schlaf, Ruhepuls, Herzfrequenzvariabilität und Körpergewicht, um zu schätzen, wie bereit du für das nächste Workout bist. Mehr wird nicht gelesen, und die Werte bleiben auf dem Gerät.";

@@ -1,0 +1,211 @@
+import Foundation
+import Observation
+import UIKit
+
+/// Drives the calibration flow: for each exercise a countdown, then capture
+/// until one full cycle is seen or the timeout hits. Saves the profile at the end.
+@MainActor
+@Observable
+final class CalibrationEngine {
+    enum Step: Equatable {
+        case intro
+        /// Shows the exercise instructions and waits for the athlete to tap start.
+        case ready(Exercise)
+        case countdown(Exercise, Int)
+        case capturing(Exercise)
+        case succeeded(Exercise, ExerciseCalibration)
+        case failed(Exercise, CalibrationFailure)
+        case done
+        case cameraError(String)
+    }
+
+    private(set) var step: Step = .intro
+    private(set) var liveValue: Float?
+    private(set) var faceDetected = false
+    private(set) var captureProgress: Double = 0
+    private(set) var profile: CalibrationProfile
+
+    let camera: CameraSession
+    private let processor: FrameProcessor
+    private let store: CalibrationStore
+    private let config: SignalConfig
+    private let audio: AudioFeedback
+    private let exercises: [Exercise]
+    private var exerciseIndex = 0
+
+    private var trace: [CalibrationSample] = []
+    private var captureStart: TimeInterval?
+    private var countdownTask: Task<Void, Never>?
+    private var timeoutTask: Task<Void, Never>?
+    private var cameraRunning = false
+
+    init(store: CalibrationStore, existing: CalibrationProfile?, config: SignalConfig = .default,
+         exercises: [Exercise] = Exercise.allCases, audio: AudioFeedback? = nil) {
+        self.store = store
+        self.config = config
+        self.exercises = exercises
+        self.audio = audio ?? .shared
+        self.profile = existing ?? CalibrationProfile()
+        self.camera = CameraSession(config: config)
+        self.processor = FrameProcessor(camera: camera)
+        processor.onFrame = { [weak self] observation, output in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.handle(observation: observation, output: output) }
+            }
+        }
+    }
+
+    var currentExercise: Exercise? {
+        exercises.indices.contains(exerciseIndex) ? exercises[exerciseIndex] : nil
+    }
+
+    var stepNumber: Int { min(exerciseIndex + 1, exercises.count) }
+    var exerciseList: String { exercises.map(\.singularName).joined(separator: ", ") }
+    var stepCount: Int { exercises.count }
+
+    // MARK: - Flow
+
+    /// Requests camera access and starts the preview. Moves on to the first exercise.
+    func begin() async {
+        guard await CameraSession.requestAccess() else {
+            step = .cameraError(CameraError.notAuthorized.localizedDescription)
+            return
+        }
+        do {
+            try camera.configure()
+        } catch {
+            step = .cameraError(error.localizedDescription)
+            return
+        }
+        audio.prepare()
+        camera.start()
+        cameraRunning = true
+        UIApplication.shared.isIdleTimerDisabled = true
+        exerciseIndex = 0
+        goToReady()
+    }
+
+    /// Athlete tapped "Start": countdown, then capture.
+    func startExercise() {
+        guard let exercise = currentExercise, case .ready = step else { return }
+        countdownTask?.cancel()
+        countdownTask = Task { [weak self] in
+            guard let self else { return }
+            self.audio.speak(exercise.singularName)
+            for remaining in stride(from: self.config.calibrationCountdownSeconds, through: 1, by: -1) {
+                self.step = .countdown(exercise, remaining)
+                self.audio.beep()
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+            }
+            self.audio.goSignal()
+            self.beginCapture(exercise)
+        }
+    }
+
+    func retry() {
+        cancelTasks()
+        goToReady()
+    }
+
+    func continueToNext() {
+        guard case .succeeded(let exercise, let calibration) = step else { return }
+        profile.set(calibration, for: exercise)
+        exerciseIndex += 1
+        if exerciseIndex >= exercises.count {
+            finish()
+        } else {
+            goToReady()
+        }
+    }
+
+    func cancel() {
+        cancelTasks()
+        teardown()
+    }
+
+    // MARK: - Private
+
+    private func goToReady() {
+        guard let exercise = currentExercise else { return }
+        processor.setPipeline(nil)
+        step = .ready(exercise)
+        camera.relockExposure()
+    }
+
+    private func beginCapture(_ exercise: Exercise) {
+        trace.removeAll(keepingCapacity: true)
+        captureStart = nil
+        captureProgress = 0
+        // A fresh pipeline resets the EMA; its detector output is ignored here.
+        let pipeline = SignalPipeline(exercise: exercise, thresholds: .hardcoded(for: exercise), config: config)
+        processor.setPipeline(pipeline)
+        step = .capturing(exercise)
+        timeoutTask?.cancel()
+        timeoutTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: .seconds(self.config.calibrationTimeout + 1))
+            if Task.isCancelled { return }
+            self.fail(exercise)
+        }
+    }
+
+    private func handle(observation: FrameObservation, output: PipelineOutput?) {
+        faceDetected = observation.face != nil
+        liveValue = output?.smoothed
+        guard case .capturing(let exercise) = step, let output else { return }
+        if captureStart == nil { captureStart = observation.timestamp }
+        let elapsed = observation.timestamp - (captureStart ?? observation.timestamp)
+        captureProgress = min(elapsed / config.calibrationTimeout, 1)
+
+        if let value = output.smoothed, output.confidence >= config.minConfidence {
+            trace.append(CalibrationSample(timestamp: observation.timestamp, value: value))
+        }
+        let analyzer = CalibrationAnalyzer(config: config, source: output.source)
+        if let calibration = exercise.isHold ? analyzer.evaluateHold(trace) : analyzer.evaluate(trace) {
+            timeoutTask?.cancel()
+            processor.setPipeline(nil)
+            audio.beep()
+            step = .succeeded(exercise, calibration)
+        } else if elapsed >= config.calibrationTimeout {
+            fail(exercise)
+        }
+    }
+
+    private func fail(_ exercise: Exercise) {
+        guard case .capturing = step else { return }
+        timeoutTask?.cancel()
+        processor.setPipeline(nil)
+        let source = config.source(for: exercise)
+        let analyzer = CalibrationAnalyzer(config: config, source: source)
+        let failure = exercise.isHold ? analyzer.diagnoseHold(trace) : analyzer.diagnose(trace)
+        step = .failed(exercise, failure)
+    }
+
+    private func finish() {
+        profile.createdAt = Date()
+        do {
+            try store.save(profile)
+            step = .done
+            audio.speak(L("Calibration complete"))
+        } catch {
+            step = .cameraError(L("The calibration could not be saved: \(error.localizedDescription)"))
+        }
+        teardown()
+    }
+
+    private func cancelTasks() {
+        countdownTask?.cancel()
+        timeoutTask?.cancel()
+        countdownTask = nil
+        timeoutTask = nil
+    }
+
+    private func teardown() {
+        guard cameraRunning else { return }
+        processor.setPipeline(nil)
+        camera.stop()
+        cameraRunning = false
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+}

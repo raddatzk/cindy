@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "Cindy uses the front camera to count reps during calibration and your workout. Frames are analyzed on device only, and are neither stored nor transmitted.";
+"NSHealthUpdateUsageDescription" = "Cindy writes your finished workouts to Apple Health so they show up in Fitness next to your other training.";
+"NSHealthShareUsageDescription" = "Cindy reads your sleep, resting pulse, heart rate variability and body weight to estimate how ready you are for the next workout. Nothing else is read, and the values stay on the device.";

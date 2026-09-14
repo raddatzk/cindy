@@ -98,8 +98,17 @@ jobs:
           import_p12 "Apple Development" "$DEV_CERT_P12" "$DEV_CERT_PASSWORD"
 
           # Say what actually landed, so a wrong or key-less .p12 is caught
-          # here rather than forty minutes later in the export step.
+          # here rather than forty minutes later in the export step. Printing
+          # is not enough: `find-identity` reports "0 valid identities found"
+          # and still exits 0, so the count has to be asserted.
           security find-identity -v "$keychain"
+          for kind in "Apple Distribution" "Apple Development"; do
+            if ! security find-identity -v "$keychain" | grep -q "$kind"; then
+              echo "::error::No $kind identity in the keychain — the matching" \
+                   "secret is not a .p12 containing both certificate and private key."
+              exit 1
+            fi
+          done
 
           # Without this codesign stops to ask for permission it cannot get.
           security set-key-partition-list \
@@ -119,6 +128,27 @@ jobs:
           path="$RUNNER_TEMP/private_keys/AuthKey_$ASC_KEY_ID.p8"
           echo "$ASC_KEY_P8" | base64 --decode > "$path"
           echo "ASC_KEY_PATH=$path" >> "$GITHUB_ENV"
+
+      # An upload needs an app record in App Store Connect; without one the
+      # export step fails with "Error Downloading App Information", which names
+      # neither the app nor the reason. Ask first, and say what was found.
+      # Never fatal: this is a diagnosis, and `--list-apps` is not worth a
+      # failed release of its own.
+      - name: Check the app exists in App Store Connect
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          API_PRIVATE_KEYS_DIR: ${{ runner.temp }}/private_keys
+        run: |
+          bundle_id=$(sed -n 's/^ *PRODUCT_BUNDLE_IDENTIFIER: *\(.*\)$/\1/p' project.yml | head -1)
+          echo "Looking for $bundle_id"
+          apps=$(xcrun altool --list-apps --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1)
+          echo "$apps"
+          if ! printf '%s' "$apps" | grep -qF "$bundle_id"; then
+            echo "::warning::$bundle_id is not among the apps this key can see." \
+                 "Create the app record in App Store Connect, or check the key is App Manager."
+          fi
 
       - name: Generate the project
         run: |
@@ -176,7 +206,13 @@ jobs:
           plutil -lint "$app/PrivacyInfo.xcprivacy"
 
       - name: Export and upload
+        # `IDEDistribution` drops its log bundle in TMPDIR, which is a random
+        # path under /var/folders. Point it somewhere known so the step below
+        # can pick the logs up without searching the whole runner.
+        env:
+          TMPDIR: ${{ runner.temp }}/distlogs
         run: |
+          mkdir -p "$TMPDIR"
           set -o pipefail
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/Cindy.xcarchive" \
@@ -187,6 +223,19 @@ jobs:
             -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
             | xcbeautify --renderer github-actions
+
+      # `xcodebuild` writes Apple's actual answer into an .xcdistributionlogs
+      # bundle in a temporary directory and the runner takes it to the grave.
+      # The step above only prints the one-line summary, which for a missing
+      # app record is "Error Downloading App Information" and nothing else.
+      - name: Keep the distribution logs when the upload failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcdistributionlogs
+          path: ${{ runner.temp }}/distlogs/**/*.xcdistributionlogs/**
+          if-no-files-found: warn
+          retention-days: 7
 
       # Runs even when the archive failed, so a broken run leaves no identity
       # behind on the runner.

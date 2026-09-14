@@ -291,16 +291,32 @@ unlocked login keychain and all. Hosted runners are free for public
 repositories, and secrets are never handed to a workflow triggered from a fork,
 so the release job's signing material stays out of reach as well.
 
-Six repository secrets, all for the release job:
+Seven repository secrets, all for the release job:
 
-| Secret | What it is |
-|--------|------------|
-| `DIST_CERT_P12` | Apple Distribution certificate + key, base64 of a `.p12` |
-| `DIST_CERT_PASSWORD` | password of that `.p12` |
-| `DEV_CERT_P12` | Apple Development certificate + key, base64 of a `.p12` |
-| `DEV_CERT_PASSWORD` | password of that `.p12` |
-| `ASC_KEY_P8` | App Store Connect API key, base64 of the `.p8` |
-| `ASC_KEY_ID` / `ASC_ISSUER_ID` | key id and issuer id of that API key |
+| Secret | What it is | Looks like |
+|--------|------------|------------|
+| `DIST_CERT_P12` | Apple Distribution certificate + key, base64 of a `.p12` | `MIIMi...` |
+| `DIST_CERT_PASSWORD` | password of that `.p12` | |
+| `DEV_CERT_P12` | Apple Development certificate + key, base64 of a `.p12` | `MIIMi...` |
+| `DEV_CERT_PASSWORD` | password of that `.p12` | |
+| `ASC_KEY_P8` | App Store Connect API key, base64 of the `.p8` | `LS0tLS1CRUdJTi...` |
+| `ASC_KEY_ID` | id of that key, ten characters | `2X9R4HXF34` |
+| `ASC_ISSUER_ID` | the team that issued it, a UUID | `57246542-96fe-1a63-e053-0824d011072a` |
+
+The last two sit next to each other in App Store Connect and are easy to mix
+up. The issuer id is the same for every key in the account; the key id belongs
+to the one key, and is part of the downloaded file name
+(`AuthKey_2X9R4HXF34.p8`). The release job rebuilds that name from
+`ASC_KEY_ID`, so a mismatched pair fails with a key `xcodebuild` cannot find.
+
+Both certificates and the API key come from Apple by hand, once:
+
+```bash
+base64 -i dist.p12 | gh secret set DIST_CERT_P12
+base64 -i dev.p12  | gh secret set DEV_CERT_P12
+base64 -i AuthKey_2X9R4HXF34.p8 | gh secret set ASC_KEY_P8
+gh secret set ASC_KEY_ID        # and the rest, typed in
+```
 
 The development certificate never signs anything that ships. Automatic signing
 archives with a development identity and only re-signs for distribution on

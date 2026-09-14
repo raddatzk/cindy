@@ -22,9 +22,18 @@ out of the keywords, because App Store search indexes all three together.
 | Primary language | English (U.S.) |
 | Category | Health & Fitness |
 | Secondary category | *(none)* |
-| Support URL | https://github.com/raddatzk/cindy/blob/main/SUPPORT.md |
 | Marketing URL | *(none)* |
-| Privacy policy URL | https://github.com/raddatzk/cindy/blob/main/PRIVACY.md |
+
+## URLs
+
+Both are set per language in App Store Connect — the support URL on the version
+page next to the other texts, the privacy policy URL under App Information — so
+each language points straight at its own half of the page.
+
+| Field | English (U.S.) | German |
+|-------|----------------|--------|
+| Support URL | https://github.com/raddatzk/cindy/blob/main/SUPPORT.md#english | https://github.com/raddatzk/cindy/blob/main/SUPPORT.md#deutsch |
+| Privacy policy URL | https://github.com/raddatzk/cindy/blob/main/PRIVACY.md#english | https://github.com/raddatzk/cindy/blob/main/PRIVACY.md#deutsch |
 
 ## English (U.S.)
 

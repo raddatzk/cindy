@@ -22,7 +22,7 @@ out of the keywords, because App Store search indexes all three together.
 | Primary language | English (U.S.) |
 | Category | Health & Fitness |
 | Secondary category | *(none)* |
-| Support URL | https://github.com/raddatzk/cindy |
+| Support URL | https://github.com/raddatzk/cindy/blob/main/SUPPORT.md |
 | Marketing URL | *(none)* |
 | Privacy policy URL | https://github.com/raddatzk/cindy/blob/main/PRIVACY.md |
 

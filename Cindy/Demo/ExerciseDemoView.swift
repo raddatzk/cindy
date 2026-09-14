@@ -30,6 +30,8 @@ struct ExerciseDemoView: View {
                     .padding(8)
                 }
             }
+            // A model that failed belongs to one exercise, not to the next.
+            .onChange(of: exercise) { modelFailed = false }
     }
 
     @ViewBuilder
@@ -38,6 +40,10 @@ struct ExerciseDemoView: View {
         if let url = Self.modelURL(for: demo), !modelFailed {
             RealityDemoView(url: url, perspective: demo.perspective, isPaused: paused) { modelFailed = true }
                 .aspectRatio(1, contentMode: .fit)
+                // A RealityView builds its scene once; a new URL alone leaves
+                // the previous exercise's model playing. A new identity per
+                // exercise rebuilds it — the onboarding picker switches in place.
+                .id(exercise)
         } else {
             StickFigureDemoView(demo: demo, isPaused: paused)
         }

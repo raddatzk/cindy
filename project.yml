@@ -15,7 +15,12 @@ settings:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     TARGETED_DEVICE_FAMILY: "1"
-    SWIFT_STRICT_CONCURRENCY: minimal
+    # `complete` is the goal; the camera path still trips it and is the one
+    # part never run on real hardware, so it is left for after the device
+    # test. `targeted` holds everything already cleaned up.
+    SWIFT_STRICT_CONCURRENCY: targeted
+    # Makes key path literals sendable, as the Swift 6 language mode does.
+    SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: MDQY93XVHF

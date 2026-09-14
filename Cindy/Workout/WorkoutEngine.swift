@@ -239,10 +239,11 @@ final class WorkoutEngine {
     private func startClock() {
         segmentStart = Date()
         timer?.invalidate()
+        // Added to the main run loop below, so the block already fires on the
+        // main thread — the hop through `DispatchQueue.main` this used to do
+        // only delayed the tick by one turn and captured `self` a second time.
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { self?.tick() }
-            }
+            MainActor.assumeIsolated { self?.tick() }
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer

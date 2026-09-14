@@ -20,7 +20,9 @@ enum HealthError: LocalizedError {
 /// readiness estimate needs. Asking for everything at once means the user
 /// decides about both directions in a single sheet — and HealthKit lets them
 /// refuse each type individually right there.
-final class HealthAccess {
+/// `Sendable` because it holds no mutable state: one `HKHealthStore`, which
+/// HealthKit itself declares as sendable, and type constants.
+final class HealthAccess: Sendable {
     static let shared = HealthAccess()
 
     let store = HKHealthStore()

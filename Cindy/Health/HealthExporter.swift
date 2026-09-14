@@ -5,11 +5,15 @@ import HealthKit
 ///
 /// Which records already went to Health is remembered locally, so the app
 /// never needs read access to the workout store just to avoid duplicates.
-final class HealthExporter {
+/// `Sendable`: the exported ids live in `UserDefaults`, not in a stored
+/// property, so there is no mutable state of its own to race over.
+final class HealthExporter: Sendable {
     static let shared = HealthExporter()
 
     private let access: HealthAccess
-    private let defaults: UserDefaults
+    /// `UserDefaults` is documented as thread-safe but predates `Sendable`, so
+    /// the compiler cannot see that and has to be told.
+    nonisolated(unsafe) private let defaults: UserDefaults
     private static let exportedIDsKey = "healthExportedWorkoutIDs"
     /// Prefix for Cindy's own metadata keys, which Health passes through untouched.
     private static let metadataPrefix = "me.raddatz.cindy."

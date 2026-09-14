@@ -83,7 +83,9 @@ final class AppModel {
     private static let themeKey = "appTheme"
     private static let languageKey = "appLanguage"
 
-    private static func loadSetting<Value: RawRepresentable>(_ key: String) -> Value? where Value.RawValue == String {
+    /// `nonisolated`: it only reads `UserDefaults`, and as a main-actor member
+    /// the generic initializer it hands to `flatMap` would have to cross isolation.
+    private nonisolated static func loadSetting<Value: RawRepresentable & Sendable>(_ key: String) -> Value? where Value.RawValue == String {
         UserDefaults.standard.string(forKey: key).flatMap(Value.init(rawValue:))
     }
 

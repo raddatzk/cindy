@@ -1,5 +1,7 @@
 import Foundation
-import UserNotifications
+// The framework has not been audited for concurrency; its types are safe to
+// hold across isolation but not yet marked as such.
+@preconcurrency import UserNotifications
 
 /// The single local notification that nudges towards the next session.
 ///
@@ -7,7 +9,9 @@ import UserNotifications
 /// the date the planner picked. A pending notification cannot re-evaluate
 /// itself, so it is rewritten whenever the app recomputes readiness — on
 /// launch, after a workout, and on a background refresh.
-final class WorkoutReminder {
+/// `Sendable`: the pending nudge is state of the notification centre, which is
+/// itself sendable; nothing is stored here but a reference to it.
+final class WorkoutReminder: Sendable {
     static let shared = WorkoutReminder()
     /// One identifier, so scheduling always replaces the previous nudge.
     static let identifier = "nextWorkout"

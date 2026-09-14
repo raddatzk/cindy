@@ -3,6 +3,12 @@ import Testing
 @testable import Cindy
 
 struct WorkoutPlanTests {
+    /// `summary` is localized, so the expectations below only hold in one
+    /// language. Pin it rather than inheriting the host's: a developer Mac
+    /// running in German passes either way, a CI runner in English does not.
+    /// Swift Testing makes a fresh instance per test, so this runs before each.
+    init() { Localization.apply(.german) }
+
     @Test func cindyPlanOrderAndReps() {
         let plan = WorkoutPlan.cindy
         #expect(plan.repsPerRound == 30)

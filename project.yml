@@ -58,6 +58,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.raddatz.cindy
+        # Repeated from the project settings on purpose. XcodeGen's preset for
+        # an iOS application sets "1,2" at target level, which outranks the
+        # project level, so the "1" up there never reached the build. A
+        # universal build is rejected on upload for its portrait-only
+        # orientation (iPad multitasking wants all four), and would put the
+        # app under iPad review and require iPad screenshots.
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         ENABLE_PREVIEWS: YES
@@ -74,6 +81,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.raddatz.cindy.tests
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
 
 schemes:
   Cindy:

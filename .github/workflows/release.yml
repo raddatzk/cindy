@@ -205,6 +205,18 @@ jobs:
           fi
           plutil -lint "$app/PrivacyInfo.xcprivacy"
 
+      # Cindy is iPhone-only, and XcodeGen's target preset quietly made it
+      # universal once. App Store Connect only noticed at upload, as an
+      # orientation error about iPad multitasking; this notices before.
+      - name: Check the app is iPhone-only
+        run: |
+          app="$RUNNER_TEMP/Cindy.xcarchive/Products/Applications/Cindy.app"
+          family=$(plutil -extract UIDeviceFamily json -o - "$app/Info.plist")
+          if [ "$family" != "[1]" ]; then
+            echo "::error::UIDeviceFamily is $family, expected [1] — TARGETED_DEVICE_FAMILY in project.yml."
+            exit 1
+          fi
+
       - name: Export and upload
         # `IDEDistribution` drops its log bundle in TMPDIR, which is a random
         # path under /var/folders. Point it somewhere known so the step below

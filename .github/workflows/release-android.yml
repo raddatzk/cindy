@@ -101,20 +101,23 @@ jobs:
           done
           exit $missing
 
-      - name: Install the upload key
-        env:
-          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
-        run: |
-          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
-          echo "CINDY_UPLOAD_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-
       # The shared CSV replays hold the detector to the same counts as iOS; a
       # release that miscounts is worse than no release.
       - name: Test
         run: ./gradlew :core:test :app:testDebugUnitTest
 
+      # After the tests, so the key sits on the runner only as long as needed.
+      # Its path goes to the build step alone: the Gradle build refuses a
+      # keystore without its password, and a job-wide path once made the test
+      # step fail on exactly that.
+      - name: Install the upload key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+        run: echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+
       - name: Build the bundle
         env:
+          CINDY_UPLOAD_KEYSTORE: ${{ runner.temp }}/upload.jks
           CINDY_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           CINDY_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           CINDY_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}

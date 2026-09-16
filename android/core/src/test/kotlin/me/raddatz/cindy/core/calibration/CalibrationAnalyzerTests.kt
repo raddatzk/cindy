@@ -44,6 +44,23 @@ class CalibrationAnalyzerTests {
     }
 
     @Test
+    fun calibratesAtFiveFramesPerSecond() {
+        // Galaxy A20e: half a second of rest holds three samples, not the five the 30 fps rule wants.
+        val samples = SyntheticSignal(fps = 5.0, rest = 0.05f, peak = 0.20f).reps(1, period = 1.6, leadIn = 0.8, leadOut = 0.5)
+        val calibration = assertNotNull(CalibrationAnalyzer(source = SignalSource.FACE).evaluate(trace(samples)))
+        assertEquals(RepDirection.PEAK, calibration.direction)
+        assertTrue(abs(calibration.baseline - 0.05f) < 0.01f)
+    }
+
+    @Test
+    fun aPatchyBaselineAtThirtyFramesPerSecondIsStillRejected() {
+        val samples = SyntheticSignal(rest = 0.05f, peak = 0.20f).reps(1, period = 1.6, leadIn = 0.8, leadOut = 0.5)
+        // Only four confident samples in the first half second; the rest of the trace at full rate.
+        val patchy = samples.mapIndexed { i, s -> if (s.t <= 0.5 && i % 4 != 0) Sample(s.t, s.value, 0f) else s }
+        assertNull(CalibrationAnalyzer(source = SignalSource.FACE).evaluate(trace(patchy)))
+    }
+
+    @Test
     fun detectsTroughCycle() {
         val peak = SyntheticSignal(rest = 0.05f, peak = 0.20f).reps(1, leadIn = 0.8, leadOut = 0.5)
         val inverted = peak.map { Sample(it.t, it.value?.let { v -> 0.25f - v }, it.confidence) }

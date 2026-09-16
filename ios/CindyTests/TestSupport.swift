@@ -57,6 +57,36 @@ extension Array where Element == SyntheticSignal.Sample {
     }
 }
 
+/// Drops items to about `frameRate` fps and keeps their original timestamps, like a slower camera
+/// (Galaxy A20e: 5–20 fps). After skipping `offset` leading items, an item is kept once a target
+/// frame interval has passed since the last kept one, less half a 30 fps frame for the jitter of
+/// the recorded timestamps (0.0333 / 0.0334 s).
+func decimate<T>(_ items: [T], frameRate: Double, offset: Int = 0, timestamp: (T) -> TimeInterval) -> [T] {
+    let interval = 1 / frameRate - 0.5 / 30
+    var kept: [T] = []
+    var last: TimeInterval?
+    for item in items.dropFirst(offset) {
+        let t = timestamp(item)
+        if last == nil || t - (last ?? t) >= interval {
+            kept.append(item)
+            last = t
+        }
+    }
+    return kept
+}
+
+extension Array where Element == SyntheticSignal.Sample {
+    func decimated(frameRate: Double, offset: Int = 0) -> [SyntheticSignal.Sample] {
+        decimate(self, frameRate: frameRate, offset: offset) { $0.t }
+    }
+}
+
+extension Array where Element == FrameObservation {
+    func decimated(frameRate: Double, offset: Int = 0) -> [FrameObservation] {
+        decimate(self, frameRate: frameRate, offset: offset) { $0.timestamp }
+    }
+}
+
 /// Parses CSV files written by `FrameLogger` (columns t, raw, confidence by default).
 enum CSVSignalReplay {
     /// `column` / `confidenceColumn` pick another signal, e.g. `pose_shoulder_w` / `pose_conf`.

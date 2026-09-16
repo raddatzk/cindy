@@ -24,6 +24,23 @@ struct CalibrationAnalyzerTests {
         #expect(abs(calibration.baseline - 0.05) < 0.01)
     }
 
+    @Test func calibratesAtFiveFramesPerSecond() throws {
+        // Galaxy A20e: half a second of rest holds three samples, not the five the 30 fps rule wants.
+        let samples = SyntheticSignal(fps: 5, rest: 0.05, peak: 0.20).reps(1, period: 1.6, leadIn: 0.8, leadOut: 0.5)
+        let calibration = try #require(CalibrationAnalyzer(source: .face).evaluate(trace(samples)))
+        #expect(calibration.direction == .peak)
+        #expect(abs(calibration.baseline - 0.05) < 0.01)
+    }
+
+    @Test func aPatchyBaselineAtThirtyFramesPerSecondIsStillRejected() {
+        let samples = SyntheticSignal(rest: 0.05, peak: 0.20).reps(1, period: 1.6, leadIn: 0.8, leadOut: 0.5)
+        // Only four confident samples in the first half second; the rest of the trace at full rate.
+        let patchy = samples.enumerated().map { i, s in
+            s.t <= 0.5 && i % 4 != 0 ? SyntheticSignal.Sample(t: s.t, value: s.value, confidence: 0) : s
+        }
+        #expect(CalibrationAnalyzer(source: .face).evaluate(trace(patchy)) == nil)
+    }
+
     @Test func detectsTroughCycle() throws {
         let peak = SyntheticSignal(rest: 0.05, peak: 0.20).reps(1, leadIn: 0.8, leadOut: 0.5)
         let inverted = peak.map { SyntheticSignal.Sample(t: $0.t, value: $0.value.map { 0.25 - $0 }, confidence: $0.confidence) }

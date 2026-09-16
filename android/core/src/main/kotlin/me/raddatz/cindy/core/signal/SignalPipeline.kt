@@ -48,6 +48,9 @@ class SignalPipeline(
     private val holdDetector: HoldDetector?
     private val evidence: BodyEvidence?
 
+    /** Timestamp of the previous frame of any confidence; the EMA scales to this interval. */
+    private var lastTimestamp: Double? = null
+
     init {
         val adaptation = extractor.restAdaptation(exercise, this.source)
         this.thresholds = if (adaptation != null) {
@@ -92,9 +95,13 @@ class SignalPipeline(
 
     /** Feeds an already extracted scalar (also used by tests and CSV replay). */
     fun process(value: Float?, confidence: Float, timestamp: Double): PipelineOutput {
+        // The interval to the previous camera frame, not to the previous EMA update: a frame without
+        // a face holds the EMA like before, only a lower frame rate moves it further per sample.
+        val frameInterval = lastTimestamp?.let { timestamp - it }
+        lastTimestamp = timestamp
         val smoothed: Float? = if (value != null && confidence >= config.minConfidence) {
             val filtered = median?.update(value) ?: value
-            ema.update(filtered)
+            ema.update(filtered, frameInterval)
         } else {
             ema.value // hold the last value; the detector ignores this frame anyway
         }

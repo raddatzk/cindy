@@ -58,6 +58,59 @@ struct BrightnessSquatTests {
         #expect(match.extra == 0)
     }
 
+    @Test(arguments: [15.0, 10.0, 5.0])
+    func brightnessSquatsCountTheSameAtLowerFrameRates(frameRate: Double) throws {
+        // Galaxy A20e: 5–20 fps. Every phase of the decimation has to find the same squats. Calibrated
+        // at the full rate: the calibration capture wants `calibrationBaselineMinSamples` (5) in its
+        // first 0.5 s, which it does not get below 10 fps.
+        let clean = try frames("recorded_squats_10_clean")
+        let cleanCalibration = try #require(CSVSignalReplay.calibrate(clean, from: 3.4, to: 7.4, exercise: .squat,
+                                                                      source: .brightness))
+        let mixed = try frames("recorded_squats_8_mixed_gaze")
+        let mixedCalibration = try #require(CSVSignalReplay.calibrate(mixed, from: 3.0, to: 5.6, exercise: .squat,
+                                                                      source: .brightness))
+        for offset in 0..<Int(30 / frameRate) {
+            let label = "at \(frameRate) fps, offset \(offset)"
+            let cleanResult = CSVSignalReplay.countReps(clean.decimated(frameRate: frameRate, offset: offset),
+                                                        exercise: .squat, thresholds: cleanCalibration.thresholds,
+                                                        source: .brightness)
+            let cleanMatch = matchedBottoms(cleanResult.reps, Self.cleanBottoms)
+            #expect(cleanMatch.hits == 10, "clean hits \(label)")
+            #expect(cleanMatch.extra == 0, "clean extra \(label)")
+            #expect(cleanResult.rejected == 0, "clean rejected \(label)")
+            let mixedResult = CSVSignalReplay.countReps(mixed.decimated(frameRate: frameRate, offset: offset),
+                                                        exercise: .squat, thresholds: mixedCalibration.thresholds,
+                                                        source: .brightness)
+            let mixedMatch = matchedBottoms(mixedResult.reps, Self.mixedBottoms)
+            #expect(mixedMatch.hits == 8, "mixed hits \(label)")
+            #expect(mixedMatch.extra == 0, "mixed extra \(label)")
+        }
+    }
+
+    @Test func vanishingCountsByDurationAtLowFrameRates() {
+        func supports(fps: Double, missing: Int) -> Bool {
+            var evidence = BodyEvidence()
+            let face = FaceObservation(boundingBox: CGRect(x: 0.4, y: 0.4, width: 0.08, height: 0.08), confidence: 0.9)
+            var t: TimeInterval = 0
+            for _ in 0..<5 {
+                evidence.update(FrameObservation(timestamp: t, face: face), cycleActive: false)
+                t += 1 / fps
+            }
+            for _ in 0..<missing {
+                evidence.update(FrameObservation(timestamp: t), cycleActive: true)
+                t += 1 / fps
+            }
+            evidence.update(FrameObservation(timestamp: t, face: face), cycleActive: true)
+            return evidence.supportsCycle
+        }
+        // 30 fps: five missing frames, as always.
+        #expect(!supports(fps: 30, missing: 4))
+        #expect(supports(fps: 30, missing: 5))
+        // 5 fps: two missing samples 0.2 s apart outlast five reference frames (0.133 s); one sample is not a run.
+        #expect(!supports(fps: 5, missing: 1))
+        #expect(supports(fps: 5, missing: 2))
+    }
+
     @Test func darkeningWithoutAMovingBodyIsRejected() {
         // A cloud passes while the athlete stands still: brightness dips like a squat,
         // but face and pose stay put.

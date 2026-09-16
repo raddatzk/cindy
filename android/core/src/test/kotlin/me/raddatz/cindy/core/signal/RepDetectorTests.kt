@@ -7,6 +7,7 @@ import org.junit.Test
 import kotlin.math.abs
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RepDetectorTests {
@@ -56,6 +57,35 @@ class RepDetectorTests {
             if (event == RepDetectorEvent.Armed) armedAt = i
         }
         assertEquals(SignalConfig.default.stableFrames - 1, armedAt)
+    }
+
+    @Test
+    fun armsByDurationAtLowFrameRates() {
+        // Galaxy A20e at 5 fps: ten frames would take 2 s. Three samples spanning 0.3 s (the
+        // duration of ten frames at 30 fps) arm instead.
+        val fiveFps = RepDetector(thresholds)
+        assertEquals(2, (0 until 10).indexOfFirst { fiveFps.process(0.05f, 1f, it * 0.2) == RepDetectorEvent.Armed })
+        // 10 fps: four samples span 0.3 s. Recorded timestamps are rounded (0.0999 s apart), which the tolerance absorbs.
+        val tenFps = RepDetector(thresholds)
+        assertEquals(3, (0 until 10).indexOfFirst { tenFps.process(0.05f, 1f, it * 0.0999) == RepDetectorEvent.Armed })
+        // 15 fps: five samples span only 0.267 s, the sixth arms.
+        val fifteenFps = RepDetector(thresholds)
+        assertEquals(5, (0 until 10).indexOfFirst { fifteenFps.process(0.05f, 1f, it / 15.0) == RepDetectorEvent.Armed })
+    }
+
+    @Test
+    fun aSingleSlowFrameDoesNotArm() {
+        val detector = RepDetector(thresholds)
+        assertNull(detector.process(0.05f, 1f, 0.0))
+        assertNull(detector.process(0.05f, 1f, 1.0)) // 1 s of rest, but only two samples
+        assertEquals(RepDetectorEvent.Armed, detector.process(0.05f, 1f, 1.1))
+    }
+
+    @Test
+    fun countsCleanRepsAtFiveFps() {
+        val result = run(SyntheticSignal(fps = 5.0).reps(10))
+        assertEquals(10, result.reps)
+        assertEquals(0, result.rejected)
     }
 
     @Test

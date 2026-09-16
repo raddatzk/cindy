@@ -30,12 +30,16 @@ enum class SignalSource(val rawValue: String) {
  * deliberately plain constants so they can be tweaked after analysing debug CSV recordings.
  *
  * Durations are seconds (`TimeInterval` on iOS).
+ *
+ * Numbers counted in frames (`emaAlpha`, `restTrackingAlpha`, `stableFrames`, `evidenceLostFrames`)
+ * mean frames at [referenceFrameRate]; [me.raddatz.cindy.core.signal.FrameTiming] applies them to
+ * the frame rate the camera actually delivers.
  */
 @Serializable
 data class SignalConfig(
     // Smoothing & thresholds
 
-    /** EMA smoothing factor (1 = no smoothing). */
+    /** EMA smoothing factor per reference frame (1 = no smoothing), scaled to the frame interval. */
     val emaAlpha: Float = 0.3f,
     /**
      * Margin used to derive the Schmitt-trigger thresholds from the calibrated extremes:
@@ -55,9 +59,9 @@ data class SignalConfig(
     val restShiftTolerance: Float = 0.1f,
     /**
      * Scaled thresholds only: while armed and at rest, the rest level follows lower values with
-     * this EMA factor (never higher ones, those may be a rep starting). Corrects a rest measured
-     * while the athlete was still walking away from the phone. Brightness gains nothing from it
-     * in the recordings, so shifted thresholds do not track.
+     * this EMA factor per reference frame (never higher ones, those may be a rep starting).
+     * Corrects a rest measured while the athlete was still walking away from the phone. Brightness
+     * gains nothing from it in the recordings, so shifted thresholds do not track.
      */
     val restTrackingAlpha: Float = 0.03f,
     /**
@@ -70,7 +74,9 @@ data class SignalConfig(
     /**
      * Brightness reps only count when a body signal moved in the same cycle: the face area
      * grew by this factor, the shoulder width by [evidenceShoulderRatio], or face or pose
-     * vanished for [evidenceLostFrames] frames (looking ahead at the bottom of a squat).
+     * vanished for [evidenceLostFrames] reference frames (looking ahead at the bottom of a squat):
+     * that many consecutive missing frames, or fewer (at least two) spanning as long as that many
+     * frames do at 30 fps.
      */
     val evidenceFaceAreaRatio: Float = 1.5f,
     val evidenceShoulderRatio: Float = 1.3f,
@@ -78,7 +84,10 @@ data class SignalConfig(
     /** Pose frames below this shoulder confidence do not count as a seen body. */
     val evidencePoseMinConfidence: Float = 0.2f,
 
-    /** Median window applied to body-pose signals before the EMA (single-frame outliers). */
+    /**
+     * Median window applied to body-pose signals before the EMA (single-frame outliers). A sample
+     * count, not a duration: an outlier is one frame at any frame rate.
+     */
     val poseMedianWindow: Int = 5,
 
     // Rep plausibility & debounce
@@ -89,7 +98,11 @@ data class SignalConfig(
      * disarms the detector, so a changed standing position gets a fresh rest level.
      */
     val maxRepDuration: Double = 5.0,
-    /** Consecutive confident frames in the rest band before the counter is armed. */
+    /**
+     * Consecutive confident frames in the rest band before the counter is armed, at the reference
+     * frame rate: that many samples, or at least three spanning `(stableFrames − 1) / 30` s. A
+     * Galaxy A20e at 5 fps would otherwise need 2 s of rest, longer than the pause between squats.
+     */
     val stableFrames: Int = 10,
     /** Frames with lower confidence are ignored (state is held, not reset). */
     val minConfidence: Float = 0.5f,
@@ -122,7 +135,10 @@ data class SignalConfig(
     val calibrationTimeout: Double = 15.0,
     /** Length of the initial window used to measure the rest baseline. */
     val calibrationBaselineDuration: Double = 0.5,
-    /** Minimum number of confident samples the baseline window must contain. */
+    /**
+     * Minimum number of confident samples the baseline window must contain, at the reference frame
+     * rate; `FrameTiming.scaledCount` lowers it for slower cameras (never below 3).
+     */
     val calibrationBaselineMinSamples: Int = 5,
     /** Face-area signals must swing by at least this fraction of the baseline. */
     val calibrationMinRelativeExcursion: Float = 0.3f,
@@ -143,6 +159,7 @@ data class SignalConfig(
 
     /** Seconds of auto exposure after the session starts before exposure is locked. */
     val exposureSettleDuration: Double = 2.0,
+    /** Frame rate requested from the camera. The tuning reference is [referenceFrameRate], not this. */
     val targetFrameRate: Double = 30.0,
 ) {
     fun source(exercise: Exercise): SignalSource = when (exercise) {
@@ -161,5 +178,11 @@ data class SignalConfig(
 
     companion object {
         val default: SignalConfig = SignalConfig()
+
+        /**
+         * Frame rate the per-frame tunables were tuned at (iPhones, 30 fps). A constant rather than
+         * [targetFrameRate]: the camera request may change per device, the tuning must not move with it.
+         */
+        const val referenceFrameRate: Double = 30.0
     }
 }

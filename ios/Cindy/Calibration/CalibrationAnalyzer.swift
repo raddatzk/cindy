@@ -123,7 +123,11 @@ struct CalibrationAnalyzer: Sendable {
         guard let first = trace.first else { return nil }
         let baselineEnd = first.timestamp + config.calibrationBaselineDuration
         let baselineSamples = trace.prefix { $0.timestamp <= baselineEnd }
-        guard baselineSamples.count >= config.calibrationBaselineMinSamples else { return nil }
+        // A count at the reference frame rate: a slower camera fits fewer samples in the window.
+        let minSamples = FrameTiming.scaledCount(config.calibrationBaselineMinSamples,
+                                                 timestamps: trace.map(\.timestamp),
+                                                 floor: FrameTiming.minStableSamples)
+        guard baselineSamples.count >= minSamples else { return nil }
         let baseline = median(baselineSamples.map(\.value))
         let values = trace.map(\.value)
         let minValue = values.min() ?? baseline

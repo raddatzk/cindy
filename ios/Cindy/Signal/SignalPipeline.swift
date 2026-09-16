@@ -33,6 +33,8 @@ final class SignalPipeline {
     private let detector: RepDetector?
     private let holdDetector: HoldDetector?
     private var evidence: BodyEvidence?
+    /// Timestamp of the previous frame of any confidence; the EMA scales to this interval.
+    private var lastTimestamp: TimeInterval?
 
     /// `holdSeconds` switches the pipeline to the time-based hold detector (plank).
     init(exercise: Exercise, thresholds: RepThresholds, source: SignalSource? = nil, config: SignalConfig = .default,
@@ -87,10 +89,14 @@ final class SignalPipeline {
 
     /// Feeds an already extracted scalar (also used by tests and CSV replay).
     func process(value: Float?, confidence: Float, timestamp: TimeInterval) -> PipelineOutput {
+        // The interval to the previous camera frame, not to the previous EMA update: a frame without
+        // a face holds the EMA like before, only a lower frame rate moves it further per sample.
+        let frameInterval = lastTimestamp.map { timestamp - $0 }
+        lastTimestamp = timestamp
         var smoothed: Float?
         if let value, confidence >= config.minConfidence {
             let filtered = median?.update(value) ?? value
-            smoothed = ema.update(filtered)
+            smoothed = ema.update(filtered, frameInterval: frameInterval)
         } else {
             smoothed = ema.value // hold the last value; the detector ignores this frame anyway
         }

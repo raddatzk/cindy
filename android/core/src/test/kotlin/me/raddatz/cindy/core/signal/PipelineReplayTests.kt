@@ -7,6 +7,7 @@ import me.raddatz.cindy.core.Rect
 import me.raddatz.cindy.core.SignalConfig
 import me.raddatz.cindy.core.SignalSource
 import me.raddatz.cindy.core.SyntheticSignal
+import me.raddatz.cindy.core.decimated
 import me.raddatz.cindy.core.scaled
 import org.junit.Test
 import kotlin.math.abs
@@ -67,6 +68,53 @@ class PipelineReplayTests {
                 CSVSignalReplay.countReps(samples, Exercise.SQUAT, squatPoseCalibration, source = SignalSource.POSE),
                 "scale $scale",
             )
+        }
+    }
+
+    @Test
+    fun recordedFixturesCountTheSameAtLowerFrameRates() {
+        // Galaxy A20e: 5–20 fps. Rows are dropped, their timestamps kept, and every phase of the
+        // decimation (which rows survive) has to count what the full rate counts.
+        val synthetic = CSVSignalReplay.load(FixtureLocator.require("synthetic_pushups_10"))
+        val syntheticThresholds = RepThresholds.from(min = 0.05f, max = 0.20f, direction = RepDirection.PEAK)
+        val pushUps = CSVSignalReplay.load(FixtureLocator.require("recorded_pushups_3_face"))
+        val squats = CSVSignalReplay.load(FixtureLocator.require("recorded_squats_4_face"))
+        val shoulders = CSVSignalReplay.load(
+            FixtureLocator.require("recorded_squats_8_mixed_gaze"), column = "pose_shoulder_w", confidenceColumn = "pose_conf",
+        )
+        for (frameRate in listOf(15.0, 10.0, 5.0)) {
+            for (offset in 0 until (30 / frameRate).toInt()) {
+                val label = "at $frameRate fps, offset $offset"
+                assertEquals(
+                    10,
+                    CSVSignalReplay.countReps(synthetic.decimated(frameRate, offset), Exercise.PUSH_UP, syntheticThresholds),
+                    "synthetic push-ups $label",
+                )
+                assertEquals(
+                    3,
+                    CSVSignalReplay.countReps(pushUps.decimated(frameRate, offset), Exercise.PUSH_UP, pushUpCalibration),
+                    "push-ups $label",
+                )
+                assertEquals(
+                    4,
+                    CSVSignalReplay.countReps(squats.decimated(frameRate, offset), Exercise.SQUAT, squatCalibration),
+                    "squats $label",
+                )
+                // The shoulder width keeps its count down to 8 fps. Below that the 5-sample pose median
+                // spans a second, half a squat, and flattens the reps (0–2 of 4 at 5 fps); a shorter window
+                // lets the pose outliers through (5 of 4). The median stays a sample count, and pose is no
+                // exercise's default source, so 5 fps is not asserted here.
+                if (frameRate >= 10) {
+                    assertEquals(
+                        4,
+                        CSVSignalReplay.countReps(
+                            shoulders.decimated(frameRate, offset), Exercise.SQUAT, squatPoseCalibration,
+                            source = SignalSource.POSE,
+                        ),
+                        "shoulder width $label",
+                    )
+                }
+            }
         }
     }
 

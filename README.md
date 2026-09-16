@@ -67,9 +67,10 @@ Front camera (30 fps, exposure locked after 2 s)
                          each keeps its own orientation search (the phone lies flat)
   → FrameMetrics         mean brightness of the frame (squats)
   → SignalExtractor      one Float per frame for the expected exercise (+ confidence)
-  → MedianFilter         5 frames, body pose only (single-frame outliers)
-  → EMAFilter            alpha 0.3
-  → RepDetector          Schmitt trigger (low / high), rep duration 0.5–5 s, 10-frame arming debounce,
+  → MedianFilter         5 samples, body pose only (single-frame outliers)
+  → EMAFilter            alpha 0.3 per 30 fps frame, scaled to the frame interval
+  → RepDetector          Schmitt trigger (low / high), rep duration 0.5–5 s, arming debounce of 10 frames
+                         at 30 fps (or ≥ 3 samples spanning 0.3 s),
                          thresholds relative to the rest level (scaled for sizes, shifted for brightness),
                          BodyEvidence veto for brightness reps
   → WorkoutStateMachine  exercise, rep counter, round, transitions
@@ -107,6 +108,14 @@ All tunables live in `ios/Cindy/Core/SignalConfig.swift` and its twin
 `android/core/…/SignalConfig.kt` (EMA alpha, 25 % threshold
 margin, rep duration limits, arming frames, confidence, lost-timeout, per-exercise
 signal source, face-y weights, calibration timeouts).
+
+The chain was tuned on iPhones at 30 fps, but a Galaxy A20e delivers 5–20 fps, where
+ten arming frames would outlast the pause between two squats. Frame counts and EMA
+factors therefore mean frames at `SignalConfig.referenceFrameRate` (30 fps), and
+`FrameTiming` applies them to time: an alpha becomes 1 − (1 − alpha)^(dt · 30) for a
+frame interval dt (capped at 0.5 s); `stableFrames` and `evidenceLostFrames` are met by
+that many samples or by fewer (at least 3 resp. 2) spanning (N − 1) / 30 s. At 30 fps
+nothing changes. The pose median stays 5 samples.
 
 The rep direction (peak vs. trough relative to the rest position) is measured
 during calibration, so the face-area assumptions per exercise only matter for

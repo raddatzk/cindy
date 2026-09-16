@@ -46,6 +46,40 @@ struct PipelineReplayTests {
                                           source: .pose) == 4)
     }
 
+    @Test(arguments: [15.0, 10.0, 5.0])
+    func recordedFixturesCountTheSameAtLowerFrameRates(frameRate: Double) throws {
+        // Galaxy A20e: 5–20 fps. Rows are dropped, their timestamps kept, and every phase of the
+        // decimation (which rows survive) has to count what the full rate counts.
+        let synthetic = try CSVSignalReplay.load(#require(FixtureLocator.url("synthetic_pushups_10")))
+        let syntheticThresholds = RepThresholds.from(min: 0.05, max: 0.20, direction: .peak)
+        let pushUps = try CSVSignalReplay.load(#require(FixtureLocator.url("recorded_pushups_3_face")))
+        let squats = try CSVSignalReplay.load(#require(FixtureLocator.url("recorded_squats_4_face")))
+        let shoulders = try CSVSignalReplay.load(#require(FixtureLocator.url("recorded_squats_8_mixed_gaze")),
+                                                 column: "pose_shoulder_w", confidenceColumn: "pose_conf")
+        for offset in 0..<Int(30 / frameRate) {
+            let label = "at \(frameRate) fps, offset \(offset)"
+            #expect(CSVSignalReplay.countReps(synthetic.decimated(frameRate: frameRate, offset: offset),
+                                              exercise: .pushUp, thresholds: syntheticThresholds) == 10,
+                    "synthetic push-ups \(label)")
+            #expect(CSVSignalReplay.countReps(pushUps.decimated(frameRate: frameRate, offset: offset),
+                                              exercise: .pushUp, thresholds: Self.pushUpCalibration) == 3,
+                    "push-ups \(label)")
+            #expect(CSVSignalReplay.countReps(squats.decimated(frameRate: frameRate, offset: offset),
+                                              exercise: .squat, thresholds: Self.squatCalibration) == 4,
+                    "squats \(label)")
+            // The shoulder width keeps its count down to 8 fps. Below that the 5-sample pose median
+            // spans a second, half a squat, and flattens the reps (0–2 of 4 at 5 fps); a shorter window
+            // lets the pose outliers through (5 of 4). The median stays a sample count, and pose is no
+            // exercise's default source, so 5 fps is not asserted here.
+            if frameRate >= 10 {
+                #expect(CSVSignalReplay.countReps(shoulders.decimated(frameRate: frameRate, offset: offset),
+                                                  exercise: .squat, thresholds: Self.squatPoseCalibration,
+                                                  source: .pose) == 4,
+                        "shoulder width \(label)")
+            }
+        }
+    }
+
     @Test(arguments: [0.5, 0.7, 1.3, 1.5, 2.0] as [Float])
     func relativeThresholdsSurviveADifferentDistance(areaScale: Float) throws {
         // Face area scales with the inverse square of the distance to the phone.

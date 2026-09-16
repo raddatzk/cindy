@@ -28,6 +28,15 @@ class HoldDetectorTests {
     }
 
     @Test
+    fun armsByDurationAtLowFrameRates() {
+        // 5 fps: three samples spanning 0.4 s arm, not ten samples (2 s).
+        val detector = HoldDetector(band, targetSeconds = 2.0, config = SignalConfig.default)
+        assertNull(detector.process(0.10f, 1f, 0.0))
+        assertNull(detector.process(0.10f, 1f, 0.2))
+        assertEquals(RepDetectorEvent.Armed, detector.process(0.10f, 1f, 0.4))
+    }
+
+    @Test
     fun leavingBandPausesWithoutReset() {
         val detector = HoldDetector(band, targetSeconds = 5.0, config = SignalConfig.default)
         var t = 0.0

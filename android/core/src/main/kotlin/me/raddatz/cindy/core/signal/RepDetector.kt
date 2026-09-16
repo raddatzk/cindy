@@ -4,7 +4,7 @@ import me.raddatz.cindy.core.SignalConfig
 import kotlin.math.abs
 
 sealed interface RepDetectorEvent {
-    /** The signal has been stable in the rest band for `stableFrames` frames; reps are counted from now on. */
+    /** The signal has been stable in the rest band for `stableFrames` reference frames; reps are counted from now on. */
     data object Armed : RepDetectorEvent
 
     /** The person was lost for longer than `lostTimeout`; the detector needs to re-arm. */
@@ -35,14 +35,16 @@ enum class RepPhase(val rawValue: String) {
  * A rep is a full cycle: leave the rest band, cross the far threshold, return into the rest
  * band. Frames with low confidence are ignored and the state is held. The counter is armed only
  * after `stableFrames` consecutive confident frames inside the rest band, which also prevents
- * the first "settling" movement after an exercise switch from being counted.
+ * the first "settling" movement after an exercise switch from being counted. Frames are counted
+ * at the reference frame rate ([FrameTiming.covers]): at 5 fps three samples spanning at least
+ * 0.3 s arm, where ten samples (2 s) would outlast the pause between two squats.
  *
  * With relative thresholds the rest level is the mean of those frames; the thresholds are
  * adapted to it (scaled or shifted), and the frames must lie inside the rest band of the adapted
  * thresholds. Scaled thresholds let the level follow lower values while armed at rest
- * (`restTrackingAlpha`), and a relative cycle open longer than `maxRepDuration` disarms, so
- * walking away after arming and stepping closer are both corrected. [cycleValidator] can veto a
- * completed cycle.
+ * (`restTrackingAlpha` per reference frame), and a relative cycle open longer than
+ * `maxRepDuration` disarms, so walking away after arming and stepping closer are both corrected.
+ * [cycleValidator] can veto a completed cycle.
  */
 class RepDetector(
     val thresholds: RepThresholds,
@@ -65,23 +67,33 @@ class RepDetector(
     /** Asked when a cycle of plausible duration completes; `false` turns it into [RepDetectorEvent.RepRejected]. */
     var cycleValidator: (() -> Boolean)? = null
 
-    /** Consecutive confident samples while unarmed, newest last (at most `stableFrames`). */
-    private val restWindow = ArrayList<Float>()
+    private data class RestSample(val value: Float, val timestamp: Double)
+
+    /**
+     * Consecutive confident samples while unarmed, newest last: the shortest run of newest samples
+     * that covers `stableFrames` (at most `stableFrames` samples).
+     */
+    private val restWindow = ArrayList<RestSample>()
 
     /** Rest level the active thresholds are scaled to (relative thresholds only). */
     private var restLevel: Float? = null
     private var cycleStart: Double? = null
     private var lastConfidentTimestamp: Double? = null
 
+    /** Timestamp of the previous frame of any confidence, for the frame interval. */
+    private var lastTimestamp: Double? = null
+
     /** Feeds one (already smoothed) sample. [timestamp] in seconds. */
     fun process(value: Float?, confidence: Float, timestamp: Double): RepDetectorEvent? {
+        val frameInterval = lastTimestamp?.let { timestamp - it }
+        lastTimestamp = timestamp
         if (value == null || confidence < config.minConfidence) {
             return handleLowConfidence(timestamp)
         }
         lastConfidentTimestamp = timestamp
 
         if (!isArmed) {
-            val armed = armedThresholds(value) ?: return null
+            val armed = armedThresholds(value, timestamp) ?: return null
             activeThresholds = armed
             restLevel = if (armed.isRelative) armed.baseline else null
             restWindow.clear()
@@ -98,7 +110,7 @@ class RepDetector(
                 phase = RepPhase.LEAVING
                 cycleStart = timestamp
             } else {
-                trackRest(value)
+                trackRest(value, frameInterval)
             }
             RepPhase.LEAVING -> if (v >= high) {
                 phase = RepPhase.PEAKED
@@ -140,28 +152,34 @@ class RepDetector(
     }
 
     /** Lets the rest level follow values on the rest side of it (relative thresholds only). */
-    private fun trackRest(value: Float) {
+    private fun trackRest(value: Float, frameInterval: Double?) {
         val rest = restLevel ?: return
         if (thresholds.adaptation != RestAdaptation.SCALE || config.restTrackingAlpha <= 0) return
         val restSide = if (thresholds.direction == RepDirection.PEAK) value < rest else value > rest
         if (!restSide) return
-        val next = rest + config.restTrackingAlpha * (value - rest)
+        val next = rest + FrameTiming.alpha(config.restTrackingAlpha, frameInterval) * (value - rest)
         restLevel = next
         activeThresholds = thresholds.adapted(toRest = next)
     }
 
-    /** Adds an unarmed sample; returns the thresholds to arm with once the last `stableFrames` samples form a plausible rest. */
-    private fun armedThresholds(value: Float): RepThresholds? {
-        val needed = maxOf(config.stableFrames, 1)
-        restWindow.add(value)
-        if (restWindow.size > needed) restWindow.removeAt(0)
-        if (restWindow.size < needed) return null
+    /**
+     * Adds an unarmed sample; returns the thresholds to arm with once the newest samples cover
+     * `stableFrames` and form a plausible rest.
+     */
+    private fun armedThresholds(value: Float, timestamp: Double): RepThresholds? {
+        restWindow.add(RestSample(value, timestamp))
+        // Keep the shortest run of newest samples that still covers the debounce; at 30 fps that is
+        // exactly the last `stableFrames` samples.
+        while (restWindow.size > 1 && coversStableFrames(restWindow.size - 1, restWindow[1].timestamp, timestamp)) {
+            restWindow.removeAt(0)
+        }
+        if (!coversStableFrames(restWindow.size, restWindow[0].timestamp, timestamp)) return null
 
         var candidate = thresholds
         val baseline = thresholds.baseline
         if (baseline != null && thresholds.isRelative) {
             var sum = 0f
-            for (sample in restWindow) sum += sample
+            for (sample in restWindow) sum += sample.value
             val rest = sum / restWindow.size.toFloat()
             when (thresholds.adaptation) {
                 RestAdaptation.SCALE -> {
@@ -174,11 +192,14 @@ class RepDetector(
             candidate = thresholds.adapted(toRest = rest)
         }
         val allInRest = restWindow.all { sample ->
-            val (v, low, _) = normalised(sample, candidate)
+            val (v, low, _) = normalised(sample.value, candidate)
             v < low
         }
         return if (allInRest) candidate else null
     }
+
+    private fun coversStableFrames(count: Int, first: Double, last: Double): Boolean =
+        FrameTiming.covers(maxOf(config.stableFrames, 1), count, last - first, FrameTiming.minStableSamples)
 
     private data class Normalised(val value: Float, val low: Float, val high: Float)
 

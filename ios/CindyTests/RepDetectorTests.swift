@@ -44,6 +44,33 @@ struct RepDetectorTests {
         #expect(armedAt == SignalConfig.default.stableFrames - 1)
     }
 
+    @Test func armsByDurationAtLowFrameRates() {
+        // Galaxy A20e at 5 fps: ten frames would take 2 s. Three samples spanning 0.3 s (the
+        // duration of ten frames at 30 fps) arm instead.
+        func armedAt(_ interval: TimeInterval) -> Int? {
+            let detector = RepDetector(thresholds: thresholds)
+            return (0..<10).first { detector.process(value: 0.05, confidence: 1, timestamp: Double($0) * interval) == .armed }
+        }
+        #expect(armedAt(0.2) == 2)
+        // 10 fps: four samples span 0.3 s. Recorded timestamps are rounded (0.0999 s apart), which the tolerance absorbs.
+        #expect(armedAt(0.0999) == 3)
+        // 15 fps: five samples span only 0.267 s, the sixth arms.
+        #expect(armedAt(1.0 / 15) == 5)
+    }
+
+    @Test func aSingleSlowFrameDoesNotArm() {
+        let detector = RepDetector(thresholds: thresholds)
+        #expect(detector.process(value: 0.05, confidence: 1, timestamp: 0) == nil)
+        #expect(detector.process(value: 0.05, confidence: 1, timestamp: 1) == nil) // 1 s of rest, but only two samples
+        #expect(detector.process(value: 0.05, confidence: 1, timestamp: 1.1) == .armed)
+    }
+
+    @Test func countsCleanRepsAtFiveFps() {
+        let result = run(SyntheticSignal(fps: 5).reps(10))
+        #expect(result.reps == 10)
+        #expect(result.rejected == 0)
+    }
+
     @Test func doesNotArmOutsideRestBand() {
         let detector = RepDetector(thresholds: thresholds)
         for i in 0..<30 {

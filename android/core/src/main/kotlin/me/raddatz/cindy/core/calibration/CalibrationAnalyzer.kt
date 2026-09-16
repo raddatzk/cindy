@@ -2,6 +2,7 @@ package me.raddatz.cindy.core.calibration
 
 import me.raddatz.cindy.core.SignalConfig
 import me.raddatz.cindy.core.SignalSource
+import me.raddatz.cindy.core.signal.FrameTiming
 import me.raddatz.cindy.core.signal.RepDirection
 import me.raddatz.cindy.core.signal.RepThresholds
 import java.time.Clock
@@ -144,7 +145,11 @@ class CalibrationAnalyzer(
         val first = trace.firstOrNull() ?: return null
         val baselineEnd = first.timestamp + config.calibrationBaselineDuration
         val baselineSamples = trace.takeWhile { it.timestamp <= baselineEnd }
-        if (baselineSamples.size < config.calibrationBaselineMinSamples) return null
+        // A count at the reference frame rate: a slower camera fits fewer samples in the window.
+        val minSamples = FrameTiming.scaledCount(
+            config.calibrationBaselineMinSamples, trace.map { it.timestamp }, FrameTiming.minStableSamples,
+        )
+        if (baselineSamples.size < minSamples) return null
         val baseline = median(baselineSamples.map { it.value })
         val values = trace.map { it.value }
         val minValue = values.minOrNull() ?: baseline

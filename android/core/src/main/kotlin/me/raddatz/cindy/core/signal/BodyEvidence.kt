@@ -9,7 +9,8 @@ import me.raddatz.cindy.core.SignalConfig
  * Evidence is any of: the face area grew by `evidenceFaceAreaRatio` over its rest level (looking
  * down), the shoulder width grew by `evidenceShoulderRatio`, or face or pose were seen and then
  * vanished for `evidenceLostFrames` consecutive frames (looking ahead, the floor camera loses both
- * at the bottom of the squat).
+ * at the bottom of the squat). Frames count at the reference frame rate ([FrameTiming.covers]),
+ * and the rest levels follow with a per-reference-frame factor, so both mean the same time at 5 fps.
  */
 class BodyEvidence(val config: SignalConfig = SignalConfig.default) {
     /** Whether any observation was fed; replays of a bare scalar have none and skip the check. */
@@ -26,27 +27,39 @@ class BodyEvidence(val config: SignalConfig = SignalConfig.default) {
     private var face = Presence()
     private var pose = Presence()
 
+    private var lastTimestamp: Double? = null
+
     /** Seen-then-missing bookkeeping for one detector. */
     private class Presence(var seen: Boolean = false) {
         var missingRun = 0
-        var longestMissingRun = 0
+        var missingSince = 0.0
 
-        fun update(present: Boolean) {
+        /** Whether a missing run in this cycle covered `evidenceLostFrames`. */
+        var vanished = false
+
+        fun update(present: Boolean, timestamp: Double, lostFrames: Int) {
             if (present) {
                 seen = true
                 missingRun = 0
             } else if (seen) {
+                if (missingRun == 0) missingSince = timestamp
                 missingRun += 1
-                longestMissingRun = maxOf(longestMissingRun, missingRun)
+                if (FrameTiming.covers(lostFrames, missingRun, timestamp - missingSince, FrameTiming.minLostSamples)) {
+                    vanished = true
+                }
             }
         }
     }
 
+    /** Per reference frame. */
     private val restAlpha = 0.1f
 
     /** Feeds one frame; [cycleActive] is whether the rep detector is inside a cycle. */
     fun update(observation: FrameObservation, cycleActive: Boolean) {
         hasObservations = true
+        val frameInterval = lastTimestamp?.let { observation.timestamp - it }
+        lastTimestamp = observation.timestamp
+        val alpha = FrameTiming.alpha(restAlpha, frameInterval)
         val faceArea = observation.face?.area
         val shoulders = observation.pose?.shoulderWidthSample
         val shoulderWidth = shoulders?.takeIf { it.confidence >= config.evidencePoseMinConfidence }?.value
@@ -54,10 +67,10 @@ class BodyEvidence(val config: SignalConfig = SignalConfig.default) {
         if (!cycleActive) {
             inCycle = false
             if (faceArea != null) {
-                restFaceArea = restFaceArea?.let { it + restAlpha * (faceArea - it) } ?: faceArea
+                restFaceArea = restFaceArea?.let { it + alpha * (faceArea - it) } ?: faceArea
             }
             if (shoulderWidth != null) {
-                restShoulderWidth = restShoulderWidth?.let { it + restAlpha * (shoulderWidth - it) } ?: shoulderWidth
+                restShoulderWidth = restShoulderWidth?.let { it + alpha * (shoulderWidth - it) } ?: shoulderWidth
             }
             return
         }
@@ -72,8 +85,9 @@ class BodyEvidence(val config: SignalConfig = SignalConfig.default) {
         }
         if (faceArea != null) maxFaceArea = maxOf(maxFaceArea, faceArea)
         if (shoulderWidth != null) maxShoulderWidth = maxOf(maxShoulderWidth, shoulderWidth)
-        face.update(present = faceArea != null)
-        pose.update(present = shoulderWidth != null)
+        val lostFrames = maxOf(config.evidenceLostFrames, 1)
+        face.update(faceArea != null, observation.timestamp, lostFrames)
+        pose.update(shoulderWidth != null, observation.timestamp, lostFrames)
     }
 
     /** Whether the current cycle showed a body moving. */
@@ -87,7 +101,6 @@ class BodyEvidence(val config: SignalConfig = SignalConfig.default) {
             ) {
                 return true
             }
-            val lostFrames = maxOf(config.evidenceLostFrames, 1)
-            return face.longestMissingRun >= lostFrames || pose.longestMissingRun >= lostFrames
+            return face.vanished || pose.vanished
         }
 }

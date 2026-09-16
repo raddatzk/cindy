@@ -24,12 +24,20 @@ enum SignalSource: String, Codable, CaseIterable, Identifiable, Sendable {
 /// All tunables of the detection chain in one place. Change the defaults here;
 /// the values are deliberately plain constants so they can be tweaked after
 /// analysing debug CSV recordings.
+///
+/// Numbers counted in frames (`emaAlpha`, `restTrackingAlpha`, `stableFrames`, `evidenceLostFrames`)
+/// mean frames at `referenceFrameRate`; `FrameTiming` applies them to the frame rate the camera
+/// actually delivers.
 struct SignalConfig: Codable, Equatable, Sendable {
     static let `default` = SignalConfig()
 
+    /// Frame rate the per-frame tunables were tuned at (iPhones, 30 fps). A constant rather than
+    /// `targetFrameRate`: the camera request may change per device, the tuning must not move with it.
+    static let referenceFrameRate: Double = 30
+
     // MARK: Smoothing & thresholds
 
-    /// EMA smoothing factor (1 = no smoothing).
+    /// EMA smoothing factor per reference frame (1 = no smoothing), scaled to the frame interval.
     var emaAlpha: Float = 0.3
     /// Margin used to derive the Schmitt-trigger thresholds from the calibrated
     /// extremes: low = min + margin·range, high = max − margin·range.
@@ -42,7 +50,7 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// from the calibrated baseline by at most this much (brightness 0…1).
     var restShiftTolerance: Float = 0.1
     /// Scaled thresholds only: while armed and at rest, the rest level follows lower
-    /// values with this EMA factor (never higher ones, those may be a rep starting).
+    /// values with this EMA factor per reference frame (never higher ones, those may be a rep starting).
     /// Corrects a rest measured while the athlete was still walking away from the phone.
     /// Brightness gains nothing from it in the recordings, so shifted thresholds do not track.
     var restTrackingAlpha: Float = 0.03
@@ -53,14 +61,17 @@ struct SignalConfig: Codable, Equatable, Sendable {
 
     /// Brightness reps only count when a body signal moved in the same cycle: the face area
     /// grew by this factor, the shoulder width by `evidenceShoulderRatio`, or face or pose
-    /// vanished for `evidenceLostFrames` frames (looking ahead at the bottom of a squat).
+    /// vanished for `evidenceLostFrames` reference frames (looking ahead at the bottom of a squat):
+    /// that many consecutive missing frames, or fewer (at least two) spanning as long as that many
+    /// frames do at 30 fps.
     var evidenceFaceAreaRatio: Float = 1.5
     var evidenceShoulderRatio: Float = 1.3
     var evidenceLostFrames: Int = 5
     /// Pose frames below this shoulder confidence do not count as a seen body.
     var evidencePoseMinConfidence: Float = 0.2
 
-    /// Median window applied to body-pose signals before the EMA (single-frame outliers).
+    /// Median window applied to body-pose signals before the EMA (single-frame outliers). A sample
+    /// count, not a duration: an outlier is one frame at any frame rate.
     var poseMedianWindow: Int = 5
 
     // MARK: Rep plausibility & debounce
@@ -69,7 +80,9 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// Longer cycles are rejected. With relative thresholds a cycle still open after this
     /// long disarms the detector, so a changed standing position gets a fresh rest level.
     var maxRepDuration: TimeInterval = 5.0
-    /// Consecutive confident frames in the rest band before the counter is armed.
+    /// Consecutive confident frames in the rest band before the counter is armed, at the reference
+    /// frame rate: that many samples, or at least three spanning `(stableFrames − 1) / 30` s. A
+    /// Galaxy A20e at 5 fps would otherwise need 2 s of rest, longer than the pause between squats.
     var stableFrames: Int = 10
     /// Frames with lower confidence are ignored (state is held, not reset).
     var minConfidence: Float = 0.5
@@ -99,7 +112,8 @@ struct SignalConfig: Codable, Equatable, Sendable {
     var calibrationTimeout: TimeInterval = 15
     /// Length of the initial window used to measure the rest baseline.
     var calibrationBaselineDuration: TimeInterval = 0.5
-    /// Minimum number of confident samples the baseline window must contain.
+    /// Minimum number of confident samples the baseline window must contain, at the reference frame
+    /// rate; `FrameTiming.scaledCount` lowers it for slower cameras (never below 3).
     var calibrationBaselineMinSamples: Int = 5
     /// Face-area signals must swing by at least this fraction of the baseline.
     var calibrationMinRelativeExcursion: Float = 0.3
@@ -120,6 +134,7 @@ struct SignalConfig: Codable, Equatable, Sendable {
 
     /// Seconds of auto exposure after the session starts before exposure is locked.
     var exposureSettleDuration: TimeInterval = 2.0
+    /// Frame rate requested from the camera. The tuning reference is `referenceFrameRate`, not this.
     var targetFrameRate: Double = 30
 
     func source(for exercise: Exercise) -> SignalSource {

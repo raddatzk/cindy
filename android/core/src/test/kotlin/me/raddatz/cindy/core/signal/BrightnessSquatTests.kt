@@ -9,6 +9,7 @@ import me.raddatz.cindy.core.SyntheticSignal
 import me.raddatz.cindy.core.calibration.CalibrationAnalyzer
 import me.raddatz.cindy.core.calibration.CalibrationFailure
 import me.raddatz.cindy.core.calibration.CalibrationSample
+import me.raddatz.cindy.core.decimated
 import org.junit.Test
 import kotlin.math.PI
 import kotlin.math.abs
@@ -85,6 +86,64 @@ class BrightnessSquatTests {
         val match = matchedBottoms(result.reps, mixedBottoms)
         assertEquals(8, match.hits)
         assertEquals(0, match.extra)
+    }
+
+    @Test
+    fun brightnessSquatsCountTheSameAtLowerFrameRates() {
+        // Galaxy A20e: 5–20 fps. Every phase of the decimation has to find the same squats. Calibrated
+        // at the full rate: the calibration capture wants `calibrationBaselineMinSamples` (5) in its
+        // first 0.5 s, which it does not get below 10 fps.
+        val clean = frames("recorded_squats_10_clean")
+        val cleanCalibration = assertNotNull(
+            CSVSignalReplay.calibrate(clean, from = 3.4, to = 7.4, exercise = Exercise.SQUAT, source = SignalSource.BRIGHTNESS),
+        )
+        val mixed = frames("recorded_squats_8_mixed_gaze")
+        val mixedCalibration = assertNotNull(
+            CSVSignalReplay.calibrate(mixed, from = 3.0, to = 5.6, exercise = Exercise.SQUAT, source = SignalSource.BRIGHTNESS),
+        )
+        for (frameRate in listOf(15.0, 10.0, 5.0)) {
+            for (offset in 0 until (30 / frameRate).toInt()) {
+                val label = "at $frameRate fps, offset $offset"
+                val cleanResult = CSVSignalReplay.countReps(
+                    clean.decimated(frameRate, offset), Exercise.SQUAT, cleanCalibration.thresholds, SignalSource.BRIGHTNESS,
+                )
+                val cleanMatch = matchedBottoms(cleanResult.reps, cleanBottoms)
+                assertEquals(10, cleanMatch.hits, "clean hits $label")
+                assertEquals(0, cleanMatch.extra, "clean extra $label")
+                assertEquals(0, cleanResult.rejected, "clean rejected $label")
+                val mixedResult = CSVSignalReplay.countReps(
+                    mixed.decimated(frameRate, offset), Exercise.SQUAT, mixedCalibration.thresholds, SignalSource.BRIGHTNESS,
+                )
+                val mixedMatch = matchedBottoms(mixedResult.reps, mixedBottoms)
+                assertEquals(8, mixedMatch.hits, "mixed hits $label")
+                assertEquals(0, mixedMatch.extra, "mixed extra $label")
+            }
+        }
+    }
+
+    @Test
+    fun vanishingCountsByDurationAtLowFrameRates() {
+        fun supports(fps: Double, missing: Int): Boolean {
+            val evidence = BodyEvidence()
+            val face = FaceObservation(Rect(0.4, 0.4, 0.08, 0.08), 0.9f)
+            var t = 0.0
+            repeat(5) {
+                evidence.update(FrameObservation(t, face), cycleActive = false)
+                t += 1 / fps
+            }
+            repeat(missing) {
+                evidence.update(FrameObservation(t), cycleActive = true)
+                t += 1 / fps
+            }
+            evidence.update(FrameObservation(t, face), cycleActive = true)
+            return evidence.supportsCycle
+        }
+        // 30 fps: five missing frames, as always.
+        assertFalse(supports(30.0, 4))
+        assertTrue(supports(30.0, 5))
+        // 5 fps: two missing samples 0.2 s apart outlast five reference frames (0.133 s); one sample is not a run.
+        assertFalse(supports(5.0, 1))
+        assertTrue(supports(5.0, 2))
     }
 
     @Test

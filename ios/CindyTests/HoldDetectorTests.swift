@@ -17,6 +17,14 @@ struct HoldDetectorTests {
         #expect(detector.repCount == 1)
     }
 
+    @Test func armsByDurationAtLowFrameRates() {
+        // 5 fps: three samples spanning 0.4 s arm, not ten samples (2 s).
+        let detector = HoldDetector(thresholds: band, targetSeconds: 2, config: .default)
+        #expect(detector.process(value: 0.10, confidence: 1, timestamp: 0) == nil)
+        #expect(detector.process(value: 0.10, confidence: 1, timestamp: 0.2) == nil)
+        #expect(detector.process(value: 0.10, confidence: 1, timestamp: 0.4) == .armed)
+    }
+
     @Test func leavingBandPausesWithoutReset() {
         let detector = HoldDetector(thresholds: band, targetSeconds: 5, config: .default)
         var t: TimeInterval = 0

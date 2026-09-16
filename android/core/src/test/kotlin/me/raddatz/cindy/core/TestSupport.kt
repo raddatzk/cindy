@@ -71,6 +71,32 @@ data class SyntheticSignal(
 /** Multiplies every value, e.g. to simulate standing closer to the phone. */
 fun List<Sample>.scaled(factor: Float): List<Sample> = map { Sample(it.t, it.value?.let { v -> v * factor }, it.confidence) }
 
+/**
+ * Drops items to about [frameRate] fps and keeps their original timestamps, like a slower camera
+ * (Galaxy A20e: 5–20 fps). After skipping [offset] leading items, an item is kept once a target
+ * frame interval has passed since the last kept one, less half a 30 fps frame for the jitter of
+ * the recorded timestamps (0.0333 / 0.0334 s).
+ */
+fun <T> decimate(items: List<T>, frameRate: Double, offset: Int = 0, timestamp: (T) -> Double): List<T> {
+    val interval = 1 / frameRate - 0.5 / 30
+    val kept = mutableListOf<T>()
+    var last: Double? = null
+    for (item in items.drop(offset)) {
+        val t = timestamp(item)
+        if (last == null || t - last >= interval) {
+            kept += item
+            last = t
+        }
+    }
+    return kept
+}
+
+fun List<Sample>.decimated(frameRate: Double, offset: Int = 0): List<Sample> = decimate(this, frameRate, offset) { it.t }
+
+@JvmName("decimatedFrames")
+fun List<FrameObservation>.decimated(frameRate: Double, offset: Int = 0): List<FrameObservation> =
+    decimate(this, frameRate, offset) { it.timestamp }
+
 /** Parses CSV files written by `FrameLogger` (columns t, raw, confidence by default). */
 object CSVSignalReplay {
     private fun lines(url: URL): MutableList<String> =

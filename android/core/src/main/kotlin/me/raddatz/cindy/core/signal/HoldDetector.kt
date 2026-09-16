@@ -8,7 +8,8 @@ import me.raddatz.cindy.core.SignalConfig
  * The signal has to stay inside the calibrated band [low, high]. While it does (and the face is
  * seen), held time accumulates from the frame timestamps. Leaving the band or losing the face
  * pauses the clock without resetting it. Emits [RepDetectorEvent.RepCompleted] once the
- * accumulated time reaches [targetSeconds].
+ * accumulated time reaches [targetSeconds]. Arms like [RepDetector]: `stableFrames` in-band
+ * samples at the reference frame rate ([FrameTiming.covers]).
  */
 class HoldDetector(
     val thresholds: RepThresholds,
@@ -25,6 +26,7 @@ class HoldDetector(
         private set
 
     private var stableCount = 0
+    private var stableSince = 0.0
     private var lastTimestamp: Double? = null
     private var lastConfidentTimestamp: Double? = null
 
@@ -54,8 +56,13 @@ class HoldDetector(
         val inBand = value >= thresholds.low && value <= thresholds.high
 
         if (!isArmed) {
-            stableCount = if (inBand) stableCount + 1 else 0
-            if (stableCount >= config.stableFrames) {
+            if (inBand) {
+                if (stableCount == 0) stableSince = timestamp
+                stableCount += 1
+            } else {
+                stableCount = 0
+            }
+            if (FrameTiming.covers(config.stableFrames, stableCount, timestamp - stableSince, FrameTiming.minStableSamples)) {
                 isArmed = true
                 isHolding = true
                 return RepDetectorEvent.Armed

@@ -136,6 +136,9 @@
     <string name="settings_version">Version</string>
     <string name="recordings_empty_title">Keine Aufnahmen</string>
     <string name="recordings_empty_body">Schalte „Workouts mitschneiden“ ein und mach ein Workout.</string>
+    <string name="recordings_save">Aufnahme auf dem Gerät speichern</string>
+    <string name="recordings_saved">%1$s gespeichert</string>
+    <string name="recordings_save_failed">Die Aufnahme konnte nicht gespeichert werden.</string>
     <string name="recordings_share">Aufnahme teilen</string>
     <string name="recordings_delete">Aufnahme löschen</string>
 

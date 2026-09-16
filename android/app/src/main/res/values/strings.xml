@@ -139,6 +139,9 @@
     <string name="settings_version">Version</string>
     <string name="recordings_empty_title">No recordings</string>
     <string name="recordings_empty_body">Turn on “Record workouts” and do a workout.</string>
+    <string name="recordings_save">Save recording to device</string>
+    <string name="recordings_saved">Saved %1$s</string>
+    <string name="recordings_save_failed">The recording could not be saved.</string>
     <string name="recordings_share">Share recording</string>
     <string name="recordings_delete">Delete recording</string>
 

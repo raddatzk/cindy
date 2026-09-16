@@ -13,6 +13,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.StopCircle
@@ -55,6 +56,7 @@ import me.raddatz.cindy.ui.components.CameraPermissionExplanation
 import me.raddatz.cindy.ui.components.KeepScreenOn
 import me.raddatz.cindy.ui.components.SignalSparkline
 import me.raddatz.cindy.ui.components.rememberCameraPermission
+import me.raddatz.cindy.ui.settings.rememberCsvSaver
 import me.raddatz.cindy.ui.settings.shareCsv
 import me.raddatz.cindy.ui.text.nameRes
 import me.raddatz.cindy.ui.text.pluralNameRes
@@ -68,6 +70,7 @@ import java.util.Locale
  */
 @Composable
 fun DebugRecorderScreen(model: AppModel, onBack: () -> Unit) {
+    val saveCsv = rememberCsvSaver()
     val viewModel: DebugViewModel = viewModel(factory = DebugViewModel.factory(model))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val permission = rememberCameraPermission(onGranted = viewModel::start)
@@ -169,6 +172,9 @@ fun DebugRecorderScreen(model: AppModel, onBack: () -> Unit) {
                         overflow = TextOverflow.MiddleEllipsis,
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { saveCsv(file) }) {
+                        Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.recordings_save))
+                    }
                     IconButton(onClick = { context.shareCsv(file) }) {
                         Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.recordings_share))
                     }

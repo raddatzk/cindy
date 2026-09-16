@@ -406,16 +406,12 @@ signs anything or needs secrets. Should these checks ever become required for
 merging, keep in mind that a path-filtered workflow that does not run leaves its
 required check pending.
 
-The release workflows do not look at paths: they run only when started by hand
-or by a tag, and the tags are per platform (`v*` for iOS, `android-v*` for
-Android, which `v*` does not match).
+The release workflows do not look at paths: they run only when started by hand.
 
 `.github/workflows/release.yml` archives the iOS app and uploads it to
 TestFlight. Start it by
-hand (Actions → Release to TestFlight → Run workflow) or push a `v*` tag; a tag
-that disagrees with `MARKETING_VERSION` in `project.yml` fails the run instead
-of arriving in App Store Connect as the wrong version. The build number is the
-workflow run number, so the same marketing version can be uploaded repeatedly.
+hand (Actions → Release to TestFlight → Run workflow). How both release jobs
+number and tag their builds is under Versioning below.
 
 Both jobs run on GitHub's `macos-26` image. The repository is public, so a pull
 request can come from anyone, and a self-hosted runner would execute a
@@ -464,12 +460,7 @@ when the archive fails.
 
 `.github/workflows/release-android.yml` builds the signed App Bundle and uploads
 it to Google Play. Start it by hand (Actions → Release to Google Play → Run
-workflow) and pick the track — internal by default — or push an `android-v*`
-tag, which ships to the internal track and must agree with `versionName` in
-`android/app/build.gradle.kts`. Android tags have their own prefix so they never
-start the TestFlight job. The version code is ten times the run number plus the
-attempt, so every run and every re-run is higher than the last upload, including
-the manual first one (version code 1).
+workflow) and pick the track — internal by default.
 
 Before uploading, the job runs both test suites, checks the bundle is signed and
 prints the upload certificate's SHA-256 (compare it with Test and release › App
@@ -512,6 +503,44 @@ code 1 was uploaded by hand. While the app has never been published in
 production, the API may only accept releases as drafts; if an upload fails with
 "Only releases with status draft may be created on draft app", run the workflow
 with status `draft` and roll the release out in the Play Console.
+
+### Versioning
+
+Nobody bumps a version by hand for a build. Both release jobs compute it:
+
+| | iOS | Android |
+|---|---|---|
+| Version users see | `CFBundleShortVersionString` = `<major>.<commits on main>` | `versionName` = `<major>.<commits on main>` |
+| Build for the store | `CFBundleVersion` = 10 × run number + attempt | `versionCode` = 10 × run number + attempt |
+| Major number | `MARKETING_VERSION` in `ios/project.yml` (`1.0`) | `majorVersion` in `android/app/build.gradle.kts` (`1`) |
+
+The commit count grows with every commit on `main`, so each new state is a
+higher version on its own — App Store Connect demands that for every App Store
+release and closes a version to further builds once it is out — and the same
+commit carries the same version on both platforms. The build number only has to
+be unique: Apple within a version, Play across all uploads. Ten per run keeps a
+re-run of a run (same run number, next attempt) from repeating the build of an
+upload that already went through. Both jobs check out the full history and fail
+on a shallow clone, which would count a single commit. Local builds are `1.0`
+with build 1.
+
+Two consequences. Rewriting `main`'s history (a force-push after a rebase or
+squash) can lower the count and get uploads rejected as older versions. And
+since every build is a new version, every TestFlight build for external testers
+goes through a Beta App Review first; internal testers and Play's internal track
+are not affected. Raise the major number only to say something to users — it is
+never needed to get past a store check.
+
+Tags are set by the workflows, not by hand: after a successful upload a small
+follow-up job tags the built commit `ios-v1.57` or `android-v1.57`, so git
+shows which state went to which store. Uploading the same state again keeps the
+first tag. That job is the only one with write access to the repository; the
+build and upload jobs, which run the build tools and a third-party upload
+action, can only read. The version a commit would get:
+
+```bash
+echo "1.$(git rev-list --count HEAD)"
+```
 
 ## Privacy
 

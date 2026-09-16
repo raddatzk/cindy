@@ -12,6 +12,11 @@ fun env(name: String): String? = providers.environmentVariable(name).orNull?.tak
 
 val uploadKeystore: String? = env("CINDY_UPLOAD_KEYSTORE")
 
+// Only the major number is maintained here. The release workflow passes
+// <major>.<commits on main> as the version name (the same version the iOS app gets for the same
+// commit) and 10 × run number + attempt as the version code; local builds are simply 1.0 (1).
+val majorVersion = 1
+
 android {
     namespace = "me.raddatz.cindy"
     compileSdk = 37
@@ -20,10 +25,9 @@ android {
         applicationId = "me.raddatz.cindy"
         minSdk = 29
         targetSdk = 36
-        // Play rejects an upload whose versionCode is not higher than every earlier one; the
-        // release workflow passes its run number.
+        // Play rejects an upload whose versionCode is not higher than every earlier one.
         versionCode = env("CINDY_VERSION_CODE")?.toInt() ?: 1
-        versionName = "1.0.0"
+        versionName = env("CINDY_VERSION_NAME") ?: "$majorVersion.0"
     }
 
     signingConfigs {

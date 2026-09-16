@@ -24,7 +24,10 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: MDQY93XVHF
-    MARKETING_VERSION: "1.0.0"
+    # Only the major number is maintained here. The TestFlight job ships
+    # <major>.<commits on main> as the version and 10 × run number + attempt
+    # as the build; local builds are simply 1.0 (1).
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:

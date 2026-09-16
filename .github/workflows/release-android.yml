@@ -1,13 +1,12 @@
 name: Release to Google Play
 
 # Run it by hand for every Play build: Actions -> Release to Google Play -> Run
-# workflow, and pick the track. The version name comes from
-# android/app/build.gradle.kts and the version code from the run, so repeated
-# runs are new builds of the same version, like the TestFlight job.
+# workflow, and pick the track. The version name is <major>.<commits on main>,
+# with the major number from majorVersion in android/app/build.gradle.kts, the
+# same version the TestFlight job gives the same commit. The version code is
+# 10 × run number + attempt, so every upload and every re-run is higher.
 #
-# A tag is optional and marks a release in git. Android tags are android-v*,
-# so they never start the TestFlight job, which listens to v*. Push one and the
-# job checks it agrees with versionName and ships to the internal track.
+# After a successful upload the tag job marks the commit as android-v<version>.
 on:
   workflow_dispatch:
     inputs:
@@ -24,8 +23,6 @@ on:
         type: choice
         options: [completed, draft]
         default: completed
-  push:
-    tags: ['android-v*']
 
 concurrency:
   group: release-android
@@ -36,18 +33,24 @@ permissions:
 
 jobs:
   play:
-    # GitHub-hosted, like CI. Only a manual dispatch or a tag starts this job,
-    # and secrets are never handed to a workflow triggered from a fork, so the
+    # GitHub-hosted, like CI. Only a manual dispatch starts this job, and
+    # secrets are never handed to a workflow triggered from a fork, so the
     # upload key stays out of reach of anyone opening a pull request.
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
+    outputs:
+      version: ${{ steps.version.outputs.name }}
 
     defaults:
       run:
         working-directory: android
 
     steps:
+      # The whole history: the version counts the commits.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -59,20 +62,18 @@ jobs:
       - name: Work out the version
         id: version
         run: |
-          # One source of truth, the same one the app reads.
-          name=$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -1)
-          if [ -z "$name" ]; then
-            echo "::error::No versionName found in android/app/build.gradle.kts."
+          major=$(sed -n 's/^val majorVersion = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -1)
+          if [ -z "$major" ]; then
+            echo "::error::No majorVersion found in android/app/build.gradle.kts."
             exit 1
           fi
 
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            tagged="${GITHUB_REF_NAME#android-v}"
-            if [ "$tagged" != "$name" ]; then
-              echo "::error::Tag $GITHUB_REF_NAME says $tagged but build.gradle.kts says $name — bump one of them."
-              exit 1
-            fi
+          # A shallow clone would count one commit and ship 1.1 forever.
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            echo "::error::The checkout is shallow; the version needs the full history (fetch-depth: 0)."
+            exit 1
           fi
+          name="$major.$(git rev-list --count HEAD)"
 
           # Play rejects a versionCode that is not higher than every earlier
           # upload, including the manual first one (1). Ten per run leaves room
@@ -118,6 +119,7 @@ jobs:
           CINDY_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           CINDY_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           CINDY_VERSION_CODE: ${{ steps.version.outputs.code }}
+          CINDY_VERSION_NAME: ${{ steps.version.outputs.name }}
         run: ./gradlew :app:bundleRelease
 
       # An unsigned or wrongly signed bundle is only rejected by Play after the
@@ -158,8 +160,8 @@ jobs:
           packageName: me.raddatz.cindy
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           releaseName: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
-          track: ${{ inputs.track || 'internal' }}
-          status: ${{ inputs.status || 'completed' }}
+          track: ${{ inputs.track }}
+          status: ${{ inputs.status }}
           # Lets the Play Console de-obfuscate crash reports from R8-shrunk builds.
           mappingFile: android/app/build/outputs/mapping/release/mapping.txt
 
@@ -167,3 +169,29 @@ jobs:
       - name: Clean up
         if: always()
         run: rm -f "$RUNNER_TEMP/upload.jks"
+
+  tag:
+    # Marks the commit that just went to the store, so git shows what shipped
+    # when. A job of its own: only these few lines hold a token that can write
+    # to the repository, not the job running the build tools and the
+    # third-party upload action. A tag created with this token starts no
+    # workflow.
+    needs: play
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Tag the released commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: android-v${{ needs.play.outputs.version }}
+        run: |
+          # The same state uploaded again (a new build of the same version)
+          # keeps its first tag instead of failing the run.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "$TAG already exists; left as it is."
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          echo "Tagged $GITHUB_SHA as $TAG"

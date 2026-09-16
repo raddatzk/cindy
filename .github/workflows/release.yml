@@ -1,32 +1,36 @@
 name: Release to TestFlight
 
-# iOS only. The Android app has no Play release job yet.
+# iOS only; Android ships through release-android.yml.
 
 # Run it by hand for every TestFlight build: Actions -> Release to TestFlight
-# -> Run workflow. The marketing version comes from project.yml and the build
-# number from the run number, so repeated runs are new builds of the same
-# version — which is what external TestFlight wants, since only a new version
-# triggers another Beta App Review.
+# -> Run workflow. The version is <major>.<commits on main>, with the major
+# number from MARKETING_VERSION in project.yml, so every new state of main is a
+# new, higher version on its own and the same state is the same version on iOS
+# and Android. The build is 10 × run number + attempt, unique even when the same
+# state is uploaded twice or a run is re-run. Every new version goes through a
+# Beta App Review before external testers get it; internal testers do not wait.
 #
-# A tag is optional and marks a release in git rather than driving it. Push
-# one and the job checks it agrees with project.yml, so a forgotten version
-# bump fails here instead of arriving in App Store Connect as the wrong one.
+# After a successful upload the tag job marks the commit as ios-v<version>.
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
 
 concurrency:
   group: release
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   testflight:
-    # GitHub-hosted, like CI. Only a manual dispatch or a tag starts this job,
-    # and secrets are never handed to a workflow triggered from a fork, so the
+    # GitHub-hosted, like CI. Only a manual dispatch starts this job, and
+    # secrets are never handed to a workflow triggered from a fork, so the
     # signing material stays out of reach of anyone opening a pull request.
     runs-on: macos-26
     timeout-minutes: 90
+
+    outputs:
+      version: ${{ steps.version.outputs.marketing }}
 
     env:
       # Not a secret: it is in project.yml and in every built binary.
@@ -38,7 +42,10 @@ jobs:
         working-directory: ios
 
     steps:
+      # The whole history: the version counts the commits.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Select Xcode
         run: |
@@ -54,25 +61,29 @@ jobs:
       - name: Work out the version
         id: version
         run: |
-          # One source of truth, the same one the Info.plist reads.
-          version=$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' project.yml | head -1)
-          if [ -z "$version" ]; then
+          marketing=$(sed -n 's/^ *MARKETING_VERSION: *"\(.*\)"/\1/p' project.yml | head -1)
+          major="${marketing%%.*}"
+          if [ -z "$major" ]; then
             echo "::error::No MARKETING_VERSION found in project.yml."
             exit 1
           fi
 
-          # `v1.0.0` is a tag; `1.0.0` is what CFBundleShortVersionString wants.
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            tagged="${GITHUB_REF_NAME#v}"
-            if [ "$tagged" != "$version" ]; then
-              echo "::error::Tag $GITHUB_REF_NAME says $tagged but project.yml says $version — bump one of them."
-              exit 1
-            fi
+          # A shallow clone would count one commit and ship 1.1 forever.
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            echo "::error::The checkout is shallow; the version needs the full history (fetch-depth: 0)."
+            exit 1
           fi
+          # Only ever grows, unless main's history is rewritten — App Store
+          # Connect would then reject the lower version.
+          version="$major.$(git rev-list --count HEAD)"
+
+          # Unique within the version even when the same state is uploaded
+          # twice, and for up to nine attempts of one run.
+          build=$(( ${{ github.run_number }} * 10 + ${{ github.run_attempt }} ))
 
           echo "marketing=$version" >> "$GITHUB_OUTPUT"
-          echo "build=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "Shipping $version (build ${{ github.run_number }})"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "Shipping $version (build $build)"
 
       # A keychain of its own, thrown away at the end. Importing into the
       # login keychain would leave the signing identity on a machine that is
@@ -263,3 +274,29 @@ jobs:
         run: |
           security delete-keychain "$KEYCHAIN_PATH" || true
           rm -rf "$RUNNER_TEMP/private_keys"
+
+  tag:
+    # Marks the commit that just went to the store, so git shows what shipped
+    # when. A job of its own: only these few lines hold a token that can write
+    # to the repository, not the job running the build tools and the
+    # third-party upload action. A tag created with this token starts no
+    # workflow.
+    needs: testflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Tag the released commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ios-v${{ needs.testflight.outputs.version }}
+        run: |
+          # The same state uploaded again (a new build of the same version)
+          # keeps its first tag instead of failing the run.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "$TAG already exists; left as it is."
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          echo "Tagged $GITHUB_SHA as $TAG"

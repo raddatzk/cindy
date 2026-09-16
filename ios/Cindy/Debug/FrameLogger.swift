@@ -5,15 +5,17 @@ import Foundation
 /// Columns are plain numbers only (no images). One row per camera frame:
 /// timestamp, exercise, source, raw & smoothed signal, confidence, face box,
 /// selected pose landmarks, detector event/phase, rep count, app state and the
-/// thresholds the detector was comparing against, plus shoulder width and image brightness.
+/// thresholds the detector was comparing against, plus shoulder width, image brightness and,
+/// when enabled, TrueDepth distances in metres (appended last, so older parsers still read the file).
 final class FrameLogger {
-    static let header = [
+    static let header = ([
         "t", "exercise", "source", "raw", "smoothed", "confidence",
         "face_x", "face_y", "face_w", "face_h", "face_conf", "face_area", "orientation",
         "pose_nose_y", "pose_shoulder_y", "pose_hip_y", "pose_conf",
         "event", "phase", "armed", "rep_count", "state", "low", "high",
-        "pose_shoulder_w", "pose_shoulder_conf", "pose_orientation", "luma_mean", "luma_center"
-    ].joined(separator: ",")
+        "pose_shoulder_w", "pose_shoulder_conf", "pose_orientation", "luma_mean", "luma_center",
+        "depth_valid", "depth_p05", "depth_p10", "depth_median", "depth_center", "depth_age",
+    ] + (0..<9).map { "depth_g\($0)" }).joined(separator: ",")
 
     let url: URL
     private let queue = DispatchQueue(label: "me.raddatz.cindy.logger", qos: .utility)
@@ -111,6 +113,16 @@ final class FrameLogger {
         fields.append(observation.poseOrientation.map { String($0.rawValue) } ?? "")
         fields.append(format(observation.metrics?.lumaMean))
         fields.append(format(observation.metrics?.lumaCenter))
+        let depth = observation.depth
+        fields.append(format(depth?.validFraction))
+        fields.append(format(depth?.p05))
+        fields.append(format(depth?.p10))
+        fields.append(format(depth?.median))
+        fields.append(format(depth?.centerMedian))
+        fields.append(format(depth?.age.map { Float($0) }, 4))
+        for cell in 0..<9 {
+            fields.append(format(depth.flatMap { cell < $0.grid.count ? $0.grid[cell] : nil }))
+        }
         return fields.joined(separator: ",")
     }
 

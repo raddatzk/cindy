@@ -64,6 +64,23 @@ struct FrameMetrics: Equatable, Sendable {
     var lumaCenter: Float?
 }
 
+/// Distances from the TrueDepth depth map, in metres. Debug recorder only: it tells whether
+/// anything that moves (legs under the pull-up bar, not just a face) shows up in the depth.
+struct DepthMetrics: Equatable, Sendable {
+    /// Share of sampled pixels with a finite, positive depth (0…1).
+    var validFraction: Float
+    /// 5th and 10th percentile of the valid depths: the nearest thing in view, robust to single pixels.
+    var p05: Float?
+    var p10: Float?
+    var median: Float?
+    /// Median of the central half (width and height) of the map.
+    var centerMedian: Float?
+    /// Medians of a 3 × 3 grid, row by row in the depth map's own (sensor) orientation.
+    var grid: [Float?] = []
+    /// Video frame time minus depth frame time, seconds; shows how stale the attached depth is.
+    var age: TimeInterval?
+}
+
 /// Everything the vision stage extracted from one camera frame.
 struct FrameObservation: Equatable, Sendable {
     /// Presentation timestamp of the frame in seconds (monotonic).
@@ -75,6 +92,7 @@ struct FrameObservation: Equatable, Sendable {
     /// Orientation that produced the body-pose hit (nil when no pose was found).
     var poseOrientation: CGImagePropertyOrientation?
     var metrics: FrameMetrics?
+    var depth: DepthMetrics?
 
     init(timestamp: TimeInterval, face: FaceObservation? = nil, pose: BodyPoseObservation? = nil,
          orientation: CGImagePropertyOrientation? = nil) {

@@ -18,11 +18,14 @@ final class FrameProcessor {
     private var logger: FrameLogger?
     private var stateProvider: (() -> String)?
     private var measuresMetrics = false
+    private var measuresDepth = false
+    private var latestDepth: (metrics: DepthMetrics, timestamp: TimeInterval)?
 
     init(camera: CameraSession) {
         self.camera = camera
         self.vision = VisionProcessor()
         camera.frameHandler = { [weak self] buffer in self?.handle(buffer) }
+        camera.depthHandler = { [weak self] depthData, timestamp in self?.handleDepth(depthData, timestamp) }
     }
 
     /// Replaces the pipeline (nil = vision only, no rep detection).
@@ -56,10 +59,27 @@ final class FrameProcessor {
         camera.videoQueue.async { self.measuresMetrics = enabled }
     }
 
+    /// Attaches the latest TrueDepth metrics to every frame (debug recorder only).
+    func setDepthEnabled(_ enabled: Bool) {
+        camera.videoQueue.async {
+            self.measuresDepth = enabled
+            self.latestDepth = nil
+        }
+    }
+
+    private func handleDepth(_ depthData: AVDepthData, _ timestamp: CMTime) {
+        guard measuresDepth, let metrics = DepthMetricsCalculator.measure(depthData) else { return }
+        latestDepth = (metrics, timestamp.seconds)
+    }
+
     private func handle(_ buffer: CMSampleBuffer) {
         guard var observation = vision.process(buffer) else { return }
         if measuresMetrics {
             observation.metrics = FrameMetricsCalculator.measure(buffer)
+        }
+        if measuresDepth, var depth = latestDepth?.metrics, let depthTime = latestDepth?.timestamp {
+            depth.age = observation.timestamp - depthTime
+            observation.depth = depth
         }
         let output = pipeline?.process(observation)
         logger?.log(observation: observation, output: output, state: stateProvider?() ?? "")

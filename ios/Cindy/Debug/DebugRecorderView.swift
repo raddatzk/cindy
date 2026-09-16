@@ -65,6 +65,14 @@ private struct DebugScreen: View {
             .pickerStyle(.segmented)
             Toggle("Body Pose mitlaufen lassen (CPU!)", isOn: $engine.bodyPose)
                 .font(.subheadline)
+            Toggle("TrueDepth-Tiefe aufzeichnen", isOn: $engine.depth)
+                .font(.subheadline)
+            if engine.depth {
+                Text(engine.depthStatus)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -89,6 +97,13 @@ private struct DebugScreen: View {
             }
             if let metrics = engine.latestObservation?.metrics {
                 row("luma", fmt(metrics.lumaMean))
+            }
+            if let depth = engine.latestObservation?.depth {
+                row("depth ok", String(format: "%.0f %%", depth.validFraction * 100))
+                row("near p10", meters(depth.p10))
+                row("median", meters(depth.median))
+                row("center", meters(depth.centerMedian))
+                row("age", depth.age.map { String(format: "%.0f ms", $0 * 1000) } ?? "–")
             }
         }
         .font(.caption.monospaced())
@@ -168,6 +183,10 @@ private struct DebugScreen: View {
         }
     }
 
+    private func meters(_ value: Float?) -> String {
+        value.map { String(format: "%.3f m", $0) } ?? "–"
+    }
+
     private func fmt(_ value: Float?) -> String {
         value.map { String(format: "%.4f", $0) } ?? "–"
     }
@@ -180,6 +199,9 @@ final class DebugEngine {
     var source: SignalSource = .face { didSet { rebuildPipeline() } }
     /// Runs body pose next to the face even when the face is the signal (CSV comparisons).
     var bodyPose = false { didSet { updateDetection() } }
+    /// Streams the TrueDepth depth map and logs its distances (does anything move, not just a face?).
+    var depth = false { didSet { updateDepth() } }
+    private(set) var depthStatus = "aus"
 
     private(set) var latest: PipelineOutput?
     private(set) var latestObservation: FrameObservation?
@@ -237,6 +259,7 @@ final class DebugEngine {
         running = true
         UIApplication.shared.isIdleTimerDisabled = true
         rebuildPipeline()
+        if depth { updateDepth() }
     }
 
     func stop() {
@@ -254,7 +277,7 @@ final class DebugEngine {
     func startRecording() {
         guard !isRecording else { return }
         do {
-            let logger = try FrameLogger(label: "\(exercise.rawValue)_\(source.rawValue)")
+            let logger = try FrameLogger(label: "\(exercise.rawValue)_\(source.rawValue)\(depth ? "_depth" : "")")
             self.logger = logger
             processor.setLogger(logger, stateProvider: { "debug" })
             isRecording = true
@@ -291,6 +314,19 @@ final class DebugEngine {
     /// The face always runs in the debug mode, so its drop-outs stay visible in recordings.
     private func updateDetection() {
         processor.setDetection(face: true, bodyPose: bodyPose || source != .face)
+    }
+
+    private func updateDepth() {
+        let enabled = depth
+        processor.setDepthEnabled(enabled)
+        guard running else { return }
+        depthStatus = enabled ? "wird eingerichtet …" : "aus"
+        camera.setDepthEnabled(enabled) { [weak self] status in
+            MainActor.assumeIsolated {
+                guard let self, self.depth == enabled else { return }
+                self.depthStatus = status
+            }
+        }
     }
 
     private func handle(_ observation: FrameObservation, _ output: PipelineOutput?) {

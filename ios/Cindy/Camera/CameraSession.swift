@@ -33,7 +33,8 @@ enum CameraAvailability: Equatable {
 ///
 /// Exposure runs on auto for `exposureSettleDuration` after start and is then
 /// locked so ceiling lights / backlight do not modulate the face signal.
-final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
+    AVCaptureDepthDataOutputDelegate {
     let session = AVCaptureSession()
     /// Frames and everything derived from them are processed on this queue.
     let videoQueue = DispatchQueue(label: "me.raddatz.cindy.video", qos: .userInitiated)
@@ -41,12 +42,16 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     /// Called on `videoQueue` for every frame.
     var frameHandler: ((CMSampleBuffer) -> Void)?
 
+    /// Called on `videoQueue` for every TrueDepth depth map while depth is enabled.
+    var depthHandler: ((AVDepthData, CMTime) -> Void)?
+
     /// Called on the main queue when frame delivery stops or comes back. Never
     /// called for a `stop()` this app asked for. Set it before `start()`.
     var onAvailabilityChange: ((CameraAvailability) -> Void)?
 
     private let sessionQueue = DispatchQueue(label: "me.raddatz.cindy.camera")
     private let output = AVCaptureVideoDataOutput()
+    private let depthOutput = AVCaptureDepthDataOutput()
     private var device: AVCaptureDevice?
     private var isConfigured = false
     private var exposureLockWorkItem: DispatchWorkItem?
@@ -176,6 +181,80 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         }
     }
 
+    // MARK: - Depth
+
+    /// Adds or removes the TrueDepth depth stream (debug recorder only). Returns a short
+    /// description of the active depth format, or why there is none, on the main queue.
+    func setDepthEnabled(_ enabled: Bool, completion: @escaping (String) -> Void) {
+        sessionQueue.async {
+            let status = self.setDepthEnabledLocked(enabled)
+            DispatchQueue.main.async { completion(status) }
+        }
+    }
+
+    private func setDepthEnabledLocked(_ enabled: Bool) -> String {
+        guard isConfigured, let device else { return "Kamera nicht bereit" }
+        let attached = session.outputs.contains(depthOutput)
+        guard enabled else {
+            if attached {
+                session.beginConfiguration()
+                session.removeOutput(depthOutput)
+                session.commitConfiguration()
+            }
+            return "aus"
+        }
+        guard device.deviceType == .builtInTrueDepthCamera else { return "keine TrueDepth-Kamera" }
+        if attached { return depthDescription(device) }
+
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        if device.activeFormat.supportedDepthDataFormats.isEmpty {
+            guard let format = depthCapableFormat(device) else { return "kein Format mit Tiefe" }
+            do {
+                try device.lockForConfiguration()
+                device.activeFormat = format
+                device.unlockForConfiguration()
+            } catch {
+                return "Format: \(error.localizedDescription)"
+            }
+            configureFrameRate(device)
+        }
+        guard session.canAddOutput(depthOutput) else { return "Tiefe lässt sich nicht hinzufügen" }
+        session.addOutput(depthOutput)
+        // Raw depth: holes stay holes, so the valid share in the CSV is honest.
+        depthOutput.isFilteringEnabled = false
+        depthOutput.alwaysDiscardsLateDepthData = true
+        depthOutput.setDelegate(self, callbackQueue: videoQueue)
+        if let best = device.activeFormat.supportedDepthDataFormats.max(by: {
+            CMVideoFormatDescriptionGetDimensions($0.formatDescription).width
+                < CMVideoFormatDescriptionGetDimensions($1.formatDescription).width
+        }) {
+            do {
+                try device.lockForConfiguration()
+                device.activeDepthDataFormat = best
+                device.unlockForConfiguration()
+            } catch {
+                // The session's default depth format is fine as well.
+            }
+        }
+        return depthDescription(device)
+    }
+
+    /// The 16:9 format closest to the preset's 1280 × 720 that also delivers depth.
+    private func depthCapableFormat(_ device: AVCaptureDevice) -> AVCaptureDevice.Format? {
+        device.formats
+            .filter { !$0.supportedDepthDataFormats.isEmpty }
+            .min { abs(Int(CMVideoFormatDescriptionGetDimensions($0.formatDescription).width) - 1280)
+                < abs(Int(CMVideoFormatDescriptionGetDimensions($1.formatDescription).width) - 1280) }
+    }
+
+    private func depthDescription(_ device: AVCaptureDevice) -> String {
+        guard let format = device.activeDepthDataFormat else { return "an, Format unbekannt" }
+        let size = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        let video = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+        return "an, Tiefe \(size.width)×\(size.height), Video \(video.width)×\(video.height)"
+    }
+
     // MARK: - Exposure
 
     private func setContinuousExposure() {
@@ -295,6 +374,13 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
         frameHandler?(sampleBuffer)
+    }
+
+    // MARK: - AVCaptureDepthDataOutputDelegate
+
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didOutput depthData: AVDepthData,
+                         timestamp: CMTime, connection: AVCaptureConnection) {
+        depthHandler?(depthData, timestamp)
     }
 
 }

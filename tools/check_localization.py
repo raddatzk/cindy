@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the L("…") calls in Cindy/ against the .strings catalogs.
+"""Compare the L("…") calls in ios/Cindy/ against the .strings catalogs.
 
 Reports keys used in code but missing from a catalog, and keys left in a
 catalog that nothing uses any more. Run it after adding or removing strings:
@@ -73,14 +73,14 @@ def key_for(literal):
 
 def keys_in_source():
     keys = set()
-    for path in (ROOT / "Cindy").rglob("*.swift"):
+    for path in (ROOT / "ios/Cindy").rglob("*.swift"):
         for match in re.finditer(r'\bL\("((?:[^"\\]|\\.)*)"\)', path.read_text()):
             keys.add(key_for(match.group(1)))
     return keys
 
 
 def keys_in_catalog(language):
-    path = ROOT / "Cindy/Resources" / f"{language}.lproj/Localizable.strings"
+    path = ROOT / "ios/Cindy/Resources" / f"{language}.lproj/Localizable.strings"
     return set(re.findall(r'^"((?:[^"\\]|\\.)*)" = ', path.read_text(), re.M))
 
 

@@ -1,5 +1,7 @@
 name: Release to TestFlight
 
+# iOS only. The Android app has no Play release job yet.
+
 # Run it by hand for every TestFlight build: Actions -> Release to TestFlight
 # -> Run workflow. The marketing version comes from project.yml and the build
 # number from the run number, so repeated runs are new builds of the same
@@ -29,6 +31,11 @@ jobs:
     env:
       # Not a secret: it is in project.yml and in every built binary.
       TEAM_ID: MDQY93XVHF
+
+    # The Xcode project lives in ios/, next to android/.
+    defaults:
+      run:
+        working-directory: ios
 
     steps:
       - uses: actions/checkout@v4

@@ -18,7 +18,7 @@ build/
 
 # Debug recordings exported from the app (never commit signal logs by accident)
 *.csv
-!CindyTests/Fixtures/*.csv
+!shared/fixtures/*.csv
 
 # Python bytecode from the Blender asset scripts
 __pycache__/

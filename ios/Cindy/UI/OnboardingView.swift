@@ -81,8 +81,8 @@ struct OnboardingView: View {
             bullet("iphone.gen3", demo.placement)
             bullet("figure.strengthtraining.functional", demo.keyCue)
         } illustration: {
-            // The stick figure, not the 3D model: it draws the floor, the bar and the phone,
-            // so every exercise shows the same phone in the same spot.
+            // Without the Reduce Motion play button of `ExerciseDemoView`: the pager
+            // already pauses every page that is not on screen.
             StickFigureDemoView(demo: demo, isPaused: page != .exercise(exercise) || reduceMotion)
                 .frame(maxHeight: 220)
         }

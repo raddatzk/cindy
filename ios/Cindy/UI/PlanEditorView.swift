@@ -91,7 +91,7 @@ struct PlanEditorList<Trailing: View>: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            ExerciseDemoButton(exercise: set.exercise, style: .icon, renderer: .stickFigure)
+            ExerciseDemoButton(exercise: set.exercise, style: .icon)
             Button(role: .destructive) {
                 plan.setEnabled(set.exercise, false)
             } label: {

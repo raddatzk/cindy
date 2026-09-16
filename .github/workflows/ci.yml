@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  ios:
     # GitHub-hosted, not the self-hosted Mac. This repository is public, so
     # anyone can open a pull request, and a self-hosted runner would execute
     # their code as a real user on a real machine — home directory, ssh keys,
@@ -23,6 +23,11 @@ jobs:
     # Nothing here signs anything, so a runner without any certificate is fine.
     runs-on: macos-26
     timeout-minutes: 60
+
+    # The Xcode project lives in ios/, next to android/.
+    defaults:
+      run:
+        working-directory: ios
 
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +57,7 @@ jobs:
       # line. Runs before the build so a missing translation is not buried
       # under twenty minutes of compiling.
       - name: Check the string catalogs
-        run: python3 tools/check_localization.py
+        run: python3 ../tools/check_localization.py
 
       # Named simulators come and go with every Xcode release, so resolve
       # whatever iPhone this runner actually has instead of hard-coding one.
@@ -95,3 +100,4 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
         shell: bash
+

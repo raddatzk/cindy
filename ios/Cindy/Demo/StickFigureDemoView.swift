@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Draws an `ExerciseDemo` as a looping stick figure.
 ///
-/// This is the renderer that always works: no assets, no Metal, no camera, and
-/// it runs in the simulator and in Xcode previews. `ExerciseDemoView` upgrades
-/// to RealityKit when a model for the exercise is bundled.
+/// Needs no assets, no Metal and no camera, and runs in the simulator and in
+/// Xcode previews. Besides the figure it draws the floor, the bar and the
+/// phone, so every exercise shows the phone in the same spot.
 struct StickFigureDemoView: View {
     let demo: ExerciseDemo
     /// Set while the view is off screen to stop the timeline from redrawing.
@@ -17,9 +17,14 @@ struct StickFigureDemoView: View {
                 let pose = demo.start.blended(towards: demo.end,
                                               Self.phase(at: context.date, cycle: demo.cycle))
                 draw(demo.props, in: &ctx, scene: scene)
-                draw(pose, in: &ctx, scene: scene)
-                // The phone goes on top: under a plank's forearms or a squat's feet it would vanish.
-                for case .phone(let x) in demo.props {
+                drawFarLimbs(of: pose, in: &ctx, scene: scene)
+                // Between the hands the near arm overlaps the phone; anywhere else the phone
+                // goes on top, or a plank's forearms or a squat's feet would hide it.
+                for case .phone(let x, true) in demo.props {
+                    draw(phoneAt: x, in: &ctx, scene: scene)
+                }
+                drawNearBody(of: pose, in: &ctx, scene: scene)
+                for case .phone(let x, false) in demo.props {
                     draw(phoneAt: x, in: &ctx, scene: scene)
                 }
             }
@@ -60,23 +65,32 @@ struct StickFigureDemoView: View {
 
     // MARK: - Drawing
 
-    private func draw(_ pose: StickPose, in ctx: inout GraphicsContext, scene: Scene) {
+    private func stroke(in scene: Scene) -> StrokeStyle {
+        StrokeStyle(lineWidth: scene.scale * demo.headRadius * 0.42, lineCap: .round, lineJoin: .round)
+    }
+
+    private func limbs(of pose: StickPose, _ transform: (CGPoint) -> CGPoint, shading: GraphicsContext.Shading,
+                       in ctx: inout GraphicsContext, scene: Scene) {
+        var path = Path()
+        // Start at the neck so the far arm is joined to the body instead
+        // of floating beside it.
+        path.addLines([transform(pose.neck), transform(pose.shoulder),
+                       transform(pose.elbow), transform(pose.hand)].map(scene.callAsFunction))
+        path.move(to: scene(transform(pose.hip)))
+        path.addLines([transform(pose.hip), transform(pose.knee), transform(pose.foot)].map(scene.callAsFunction))
+        ctx.stroke(path, with: shading, style: stroke(in: scene))
+    }
+
+    /// The far arm and leg, drawn first so everything nearer overlaps them.
+    private func drawFarLimbs(of pose: StickPose, in ctx: inout GraphicsContext, scene: Scene) {
+        limbs(of: pose, { demo.farSide(of: $0, in: pose) }, shading: .color(.brand.opacity(0.35)),
+              in: &ctx, scene: scene)
+    }
+
+    /// Torso, near arm and leg, and the head.
+    private func drawNearBody(of pose: StickPose, in ctx: inout GraphicsContext, scene: Scene) {
         let radius = scene.scale * demo.headRadius
-        let stroke = StrokeStyle(lineWidth: radius * 0.42, lineCap: .round, lineJoin: .round)
-
-        func limbs(_ transform: (CGPoint) -> CGPoint, shading: GraphicsContext.Shading) {
-            var path = Path()
-            // Start at the neck so the far arm is joined to the body instead
-            // of floating beside it.
-            path.addLines([transform(pose.neck), transform(pose.shoulder),
-                           transform(pose.elbow), transform(pose.hand)].map(scene.callAsFunction))
-            path.move(to: scene(transform(pose.hip)))
-            path.addLines([transform(pose.hip), transform(pose.knee), transform(pose.foot)].map(scene.callAsFunction))
-            ctx.stroke(path, with: shading, style: stroke)
-        }
-
-        // The far arm and leg first, so the near ones overlap them.
-        limbs({ demo.farSide(of: $0, in: pose) }, shading: .color(.brand.opacity(0.35)))
+        let stroke = stroke(in: scene)
 
         var torso = Path()
         torso.addLines([pose.neck, pose.hip].map(scene.callAsFunction))
@@ -86,7 +100,7 @@ struct StickFigureDemoView: View {
         torso.addLine(to: scene(pose.head))
         ctx.stroke(torso, with: .color(.brand), style: stroke)
 
-        limbs({ $0 }, shading: .color(.brand))
+        limbs(of: pose, { $0 }, shading: .color(.brand), in: &ctx, scene: scene)
 
         let head = scene(pose.head)
         ctx.fill(Path(ellipseIn: CGRect(x: head.x - radius, y: head.y - radius,

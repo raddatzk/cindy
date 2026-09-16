@@ -1,20 +1,11 @@
 import SwiftUI
 
-/// Shows what one exercise looks like, picking whichever renderer can actually
-/// draw it: the bundled USDZ through RealityKit, otherwise the stick figure.
+/// Shows what one exercise looks like, as a looping stick figure that also
+/// draws the floor, the bar and the phone.
 struct ExerciseDemoView: View {
-    enum Renderer {
-        /// The 3D model when one is bundled, otherwise the stick figure.
-        case automatic
-        /// Always the stick figure: it also draws the floor, the bar and the phone.
-        case stickFigure
-    }
-
     let exercise: Exercise
-    var renderer: Renderer = .automatic
     /// Set while the view is off screen so the animation stops costing frames.
     var isPaused: Bool = false
-    @State private var modelFailed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// With Reduce Motion on, a demo waits to be started instead of looping
     /// the moment it appears. It is still the whole point of the screen, so
@@ -23,7 +14,7 @@ struct ExerciseDemoView: View {
 
     var body: some View {
         let paused = isPaused || (reduceMotion && !playRequested)
-        renderer(paused: paused)
+        StickFigureDemoView(demo: exercise.demo, isPaused: paused)
             .overlay(alignment: .bottomTrailing) {
                 if reduceMotion {
                     Button {
@@ -38,47 +29,20 @@ struct ExerciseDemoView: View {
                     .padding(8)
                 }
             }
-            // A model that failed belongs to one exercise, not to the next.
-            .onChange(of: exercise) { modelFailed = false }
-    }
-
-    @ViewBuilder
-    private func renderer(paused: Bool) -> some View {
-        let demo = exercise.demo
-        if renderer == .automatic, let url = Self.modelURL(for: demo), !modelFailed {
-            RealityDemoView(url: url, perspective: demo.perspective, isPaused: paused) { modelFailed = true }
-                .aspectRatio(1, contentMode: .fit)
-                // A RealityView builds its scene once; a new URL alone leaves
-                // the previous exercise's model playing. A new identity per
-                // exercise rebuilds it — the onboarding picker switches in place.
-                .id(exercise)
-        } else {
-            StickFigureDemoView(demo: demo, isPaused: paused)
-        }
-    }
-
-    /// The bundled animation for this exercise, if one has been added.
-    ///
-    /// Nothing bundled means the stick figure — that is the case for any
-    /// exercise whose model has not been built yet, not an error. Built with
-    /// `tools/build_exercise_usdz.py`.
-    static func modelURL(for demo: ExerciseDemo) -> URL? {
-        return Bundle.main.url(forResource: demo.modelName, withExtension: "usdz")
     }
 }
 
 /// The demo plus the form cues, as a sheet.
 struct ExerciseDemoSheet: View {
     let exercise: Exercise
-    var renderer: ExerciseDemoView.Renderer = .automatic
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    ExerciseDemoView(exercise: exercise, renderer: renderer)
-                        .padding(renderer == .stickFigure ? 16 : 0)
+                    ExerciseDemoView(exercise: exercise)
+                        .padding(16)
                         .frame(maxWidth: .infinity)
                         .frame(maxHeight: 320)
                         .background(Color.panelBackground, in: RoundedRectangle(cornerRadius: 16))
@@ -127,7 +91,6 @@ struct ExerciseDemoButton: View {
 
     let exercise: Exercise
     var style: Style = .prominent
-    var renderer: ExerciseDemoView.Renderer = .automatic
     @State private var showingDemo = false
 
     var body: some View {
@@ -147,7 +110,7 @@ struct ExerciseDemoButton: View {
         .buttonStyle(.borderless)
         .accessibilityLabel(L("Show the \(exercise.singularName) movement"))
         .sheet(isPresented: $showingDemo) {
-            ExerciseDemoSheet(exercise: exercise, renderer: renderer)
+            ExerciseDemoSheet(exercise: exercise)
         }
     }
 }

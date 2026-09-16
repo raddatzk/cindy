@@ -75,6 +75,10 @@ targets:
     platform: iOS
     sources:
       - path: CindyTests
+      # Recorded and synthetic signal logs, shared with the Android unit tests
+      # so both detectors are held to the same rep counts.
+      - path: ../shared/fixtures
+        buildPhase: resources
     dependencies:
       - target: Cindy
     settings:

@@ -23,10 +23,7 @@
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
 
-    <!--
-        Cindy promises no network access of any kind (PRIVACY.md). ML Kit's models are bundled and
-        work offline; the libraries only want the network for diagnostics and remote config.
-    -->
+    <!-- Cindy promises no network access of any kind (PRIVACY.md). -->
     <uses-permission
         android:name="android.permission.INTERNET"
         tools:node="remove" />

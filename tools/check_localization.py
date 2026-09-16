@@ -26,7 +26,7 @@ STRING_HINTS = (
 INT_HINTS = (
     "durationMinutes", "rounds", "reps", "totalReps", "extraReps", "stepNumber",
     "stepCount", "currentRound", "Int(", "minutes", "diff", "round", "target",
-    "value", "countdownValue", "remaining", "readiness.score",
+    "value", "countdownValue", "countdown", "remaining", "readiness.score",
 )
 
 # Plural forms live in Localizable.stringsdict, never in Localizable.strings.

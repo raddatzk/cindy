@@ -17,6 +17,8 @@ import me.raddatz.cindy.AppContainer
 import me.raddatz.cindy.app.AppModel
 import me.raddatz.cindy.camera.CameraException
 import me.raddatz.cindy.camera.CameraFrameSource
+import me.raddatz.cindy.camera.FrameSource
+import me.raddatz.cindy.camera.VisionStats
 import me.raddatz.cindy.core.Exercise
 import me.raddatz.cindy.core.SignalSource
 import me.raddatz.cindy.core.calibration.CalibrationProfile
@@ -47,6 +49,8 @@ data class DebugState(
     val running: Boolean = false,
     val usesCalibration: Boolean = false,
     val thresholds: RepThresholds = RepThresholds.hardcoded(Exercise.PUSH_UP),
+    /** Frame rate and per-stage timing, so a slow phone shows where its time goes. */
+    val stats: VisionStats? = null,
 ) {
     /** What the running detector compares against (relative thresholds are rescaled once armed). */
     val activeThresholds: RepThresholds get() = latest?.thresholds ?: thresholds
@@ -155,10 +159,18 @@ class DebugViewModel(private val container: AppContainer, private val profile: C
         _state.update { it.copy(history = emptyList(), repCount = 0, latest = null) }
     }
 
-    /** The face always runs in the debug mode, so its drop-outs stay visible in recordings. */
+    /**
+     * The face always runs in the debug mode, so its drop-outs stay visible in recordings.
+     * Detectors that do not produce the signal run at the workout's evidence interval, so the
+     * frame rate shown here is the one a workout gets.
+     */
     private fun updateDetection() {
         val current = _state.value
         frameSource.setDetection(face = true, bodyPose = current.bodyPose || current.source != SignalSource.FACE)
+        frameSource.setDetectionIntervals(
+            face = if (current.source == SignalSource.FACE) 0.0 else FrameSource.EVIDENCE_INTERVAL,
+            bodyPose = if (current.source == SignalSource.POSE) 0.0 else FrameSource.EVIDENCE_INTERVAL,
+        )
     }
 
     private fun handle(observation: FrameObservation, output: PipelineOutput?) {
@@ -176,6 +188,7 @@ class DebugViewModel(private val container: AppContainer, private val profile: C
                 history = history,
                 repCount = repCount,
                 recordedRows = if (current.isRecording) current.recordedRows + 1 else current.recordedRows,
+                stats = frameSource.stats,
             )
         }
     }

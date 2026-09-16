@@ -131,6 +131,12 @@ fun DebugRecorderScreen(model: AppModel, onBack: () -> Unit) {
                 Values(state, Modifier.weight(1f))
             }
             SignalSparkline(state.history, state.activeThresholds, Modifier.fillMaxWidth().height(140.dp))
+            Text(
+                state.stats?.summary() ?: "– fps",
+                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             ThresholdInfo(state)
 
             val recordColor = if (state.isRecording) CindyTheme.colors.danger else CindyTheme.colors.brand

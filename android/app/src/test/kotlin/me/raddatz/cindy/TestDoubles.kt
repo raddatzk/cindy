@@ -59,6 +59,8 @@ class FakeFrameSource : FrameSource {
     var detectsFace = true
     var detectsPose = false
     var measuresMetrics = false
+    var faceInterval = 0.0
+    var poseInterval = 0.0
     var logger: FrameLogger? = null
     var stateProvider: (() -> String)? = null
 
@@ -88,6 +90,11 @@ class FakeFrameSource : FrameSource {
     override fun setDetection(face: Boolean, bodyPose: Boolean) {
         detectsFace = face
         detectsPose = bodyPose
+    }
+
+    override fun setDetectionIntervals(face: Double, bodyPose: Double) {
+        faceInterval = face
+        poseInterval = bodyPose
     }
 
     override fun setMetricsEnabled(enabled: Boolean) {

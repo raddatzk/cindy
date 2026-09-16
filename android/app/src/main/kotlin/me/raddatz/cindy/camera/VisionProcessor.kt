@@ -15,11 +15,11 @@ import me.raddatz.cindy.core.signal.FaceObservation
 import me.raddatz.cindy.core.signal.FrameObservation
 import me.raddatz.cindy.core.signal.PoseJoint
 import me.raddatz.cindy.core.signal.PosePoint
-import java.util.concurrent.ExecutionException
+import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Runs MediaPipe face detection and pose landmarking on a frame and returns a [FrameObservation]
@@ -29,48 +29,98 @@ import java.util.concurrent.RejectedExecutionException
  *
  * The phone lies flat, so each detector keeps its own [OrientationSearch]: the candidate that last
  * worked first, one alternative per frame after a miss. The pixels are rotated for the candidate
- * by [RgbFrames] (half resolution, RGB). Pose runs on its own thread in parallel with the face —
- * the pose model is the expensive one, and the camera drops frames (keep-only-latest) for as long
- * as a frame is being processed.
+ * by [RgbFrames] (half resolution, RGB).
  *
- * Per-frame cost on the CPU: one 640×360 RGB conversion per orientation in use (usually one,
- * two while a search probes), BlazeFace full range (192×192 input) on the frame thread, and
- * while pose is on, the lite pose landmarker on the pose thread.
+ * Two kinds of detector run:
+ * - The **signal** detector (interval 0: the face for push-ups, pull-ups and plank) runs on the
+ *   frame thread for every frame, because every frame is a sample of the signal.
+ * - **Evidence** detectors (interval > 0: face and pose next to the brightness squats) run on a
+ *   separate thread on a copy of the frame, at most once per interval, and never make the frame
+ *   thread wait. Frames carry their latest result, hit or miss. On a Galaxy A20e face and pose on
+ *   every frame held the whole chain — the brightness signal included — at 5 fps; the brightness
+ *   itself costs about a millisecond.
  *
  * Video mode wants strictly increasing timestamps per detector instance, and the pose landmarker
  * tracks the body from one frame to the next. So:
- * - the face detector (no tracking) is one instance; a probe in the same frame gets the next
- *   millisecond;
+ * - the face detector is one instance; a probe in the same frame gets the next millisecond;
  * - the pose landmarker is one instance per orientation candidate, created when the search first
  *   needs it, so its tracking only ever sees frames in its own orientation.
+ * Each detector and its search are guarded by a lock, because a configuration change can move a
+ * detector between the frame thread and the evidence thread while a run is still going.
  *
- * Not thread-safe: call [process] from the frame thread only. Detectors are created lazily and
- * released by [close]; a later frame creates them again.
+ * Call [process], [close] and [release] from the frame thread only.
  */
 class VisionProcessor(
     context: Context,
-    /** Whether to run face detection (the signal for push-ups, pull-ups and plank). */
-    var detectFace: Boolean = true,
-    /** Whether to run the (expensive) pose landmarker (evidence for squats, pose signals). */
-    var detectBodyPose: Boolean = false,
+    detectFace: Boolean = true,
+    detectBodyPose: Boolean = false,
 ) {
-    private val appContext = context.applicationContext
-    private val frames = RgbFrames()
-    private val faceSearch = OrientationSearch()
-    private val poseSearch = OrientationSearch()
+    /** Whether to run face detection (the signal for push-ups, pull-ups and plank). */
+    @Volatile
+    var detectFace: Boolean = detectFace
+        set(value) {
+            field = value
+            forgetFace()
+        }
 
+    /** Whether to run the (expensive) pose landmarker (evidence for squats, pose signals). */
+    @Volatile
+    var detectBodyPose: Boolean = detectBodyPose
+        set(value) {
+            field = value
+            forgetPose()
+        }
+
+    /** Seconds between face runs; 0 runs it on the frame thread for every frame. */
+    var faceInterval: Double = 0.0
+        set(value) {
+            field = value
+            forgetFace()
+        }
+
+    /** Seconds between pose runs; 0 runs it on the frame thread for every frame. */
+    var poseInterval: Double = 0.0
+        set(value) {
+            field = value
+            forgetPose()
+        }
+
+    /** Timing of the last few seconds; written on the frame thread. */
+    @Volatile
+    var stats: VisionStats? = null
+        private set
+
+    private val appContext = context.applicationContext
+    private val statsAccumulator = VisionStatsAccumulator()
+
+    private val frames = RgbFrames()
+    private val faceLock = Any()
+    private val faceSearch = OrientationSearch()
     private var faceDetector: FaceDetector? = null
     private var faceFailed = false
     private var lastFaceTimestamp = Long.MIN_VALUE
 
-    // Confined to the pose thread (and to the frame thread while it waits for the pose result).
+    private val poseLock = Any()
+    private val poseSearch = OrientationSearch()
     private val poseLandmarkers = arrayOfNulls<PoseLandmarker>(OrientationCandidate.entries.size)
     private val lastPoseTimestamps = LongArray(OrientationCandidate.entries.size) { Long.MIN_VALUE }
     private var poseFailed = false
 
-    private val poseExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "me.raddatz.cindy.pose").apply { isDaemon = true }
+    // Evidence: scheduled on the frame thread, run on the evidence thread.
+    private val evidenceExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "me.raddatz.cindy.evidence").apply { isDaemon = true }
     }
+    private val evidenceIdle = AtomicBoolean(true)
+    private val evidenceFrames = RgbFrames()
+    private val snapshot = YuvSnapshot()
+    private var lastFaceRun = Double.NEGATIVE_INFINITY
+    private var lastPoseRun = Double.NEGATIVE_INFINITY
+
+    @Volatile
+    private var latestFace: OrientationSearch.Hit<FaceObservation>? = null
+
+    @Volatile
+    private var latestPose: OrientationSearch.Hit<BodyPoseObservation>? = null
 
     /**
      * @param cameraRotationDegrees CameraX's `rotationDegrees`: makes the buffer upright for a
@@ -88,33 +138,31 @@ class VisionProcessor(
         timestampNanos: Long,
         measureMetrics: Boolean,
     ): FrameObservation {
+        val started = System.nanoTime()
+        val millis = timestampNanos / 1_000_000
+        val seconds = timestampNanos / 1e9
+        scheduleEvidence(width, height, y, u, v, cameraRotationDegrees, millis, seconds)
+
+        val metrics = if (measureMetrics) {
+            FrameMetricsCalculator.measure(y.buffer, width, height, y.rowStride)
+        } else {
+            null
+        }
+
         frames.begin(width, height, y, u, v)
         try {
-            val millis = timestampNanos / 1_000_000
-            val pose: Future<OrientationSearch.Hit<BodyPoseObservation>?>? = if (detectBodyPose) {
-                try {
-                    poseExecutor.submit<OrientationSearch.Hit<BodyPoseObservation>?> {
-                        poseSearch.find { detectPose(it, cameraRotationDegrees, millis) }
-                    }
-                } catch (_: RejectedExecutionException) {
-                    null
-                }
-            } else {
-                null
+            val faceHit = when {
+                !detectFace -> null
+                faceInterval <= 0.0 -> findFace(frames, cameraRotationDegrees, millis)
+                else -> latestFace
             }
-            val metrics = if (measureMetrics) {
-                FrameMetricsCalculator.measure(y.buffer, width, height, y.rowStride)
-            } else {
-                null
-            }
-            val faceHit = if (detectFace) faceSearch.find { detectFace(it, cameraRotationDegrees, millis) } else null
-            val poseHit = try {
-                pose?.get()
-            } catch (_: ExecutionException) {
-                null
+            val poseHit = when {
+                !detectBodyPose -> null
+                poseInterval <= 0.0 -> findPose(frames, cameraRotationDegrees, millis)
+                else -> latestPose
             }
             return FrameObservation(
-                timestamp = timestampNanos / 1e9,
+                timestamp = seconds,
                 face = faceHit?.result,
                 pose = poseHit?.result,
                 orientation = faceHit?.orientation?.exifOrientation,
@@ -123,40 +171,135 @@ class VisionProcessor(
             )
         } finally {
             frames.end()
+            statsAccumulator.rgb(frames.takeConversionNanos())
+            statsAccumulator.frame(seconds, System.nanoTime() - started)?.let {
+                stats = it
+                Log.i(PERF_TAG, it.summary())
+            }
         }
     }
 
-    /** Releases the detectors; the next frame creates them again. Call on the frame thread. */
+    /** Releases the detectors; the next frame creates them again. */
     fun close() {
-        faceDetector?.close()
-        faceDetector = null
-        faceFailed = false
-        val closed = try {
-            poseExecutor.submit { closePoseLandmarkers() }
-        } catch (_: RejectedExecutionException) {
-            null
+        runOnEvidenceThread { }
+        synchronized(faceLock) {
+            faceDetector?.close()
+            faceDetector = null
+            faceFailed = false
+            lastFaceTimestamp = Long.MIN_VALUE
         }
-        if (closed == null) closePoseLandmarkers() else runCatching { closed.get() }
+        synchronized(poseLock) {
+            for (i in poseLandmarkers.indices) {
+                poseLandmarkers[i]?.close()
+                poseLandmarkers[i] = null
+                lastPoseTimestamps[i] = Long.MIN_VALUE
+            }
+            poseFailed = false
+        }
+        forgetFace()
+        forgetPose()
+        statsAccumulator.reset()
+        stats = null
     }
 
-    /** Closes the detectors and ends the pose thread for good. */
+    /** Closes the detectors and ends the evidence thread for good. */
     fun release() {
         close()
-        poseExecutor.shutdown()
+        evidenceExecutor.shutdown()
+    }
+
+    // Evidence
+
+    private fun scheduleEvidence(
+        width: Int,
+        height: Int,
+        y: YuvPlane,
+        u: YuvPlane,
+        v: YuvPlane,
+        cameraRotation: Int,
+        millis: Long,
+        seconds: Double,
+    ) {
+        val runFace = detectFace && faceInterval > 0.0 && seconds - lastFaceRun >= faceInterval
+        val runPose = detectBodyPose && poseInterval > 0.0 && seconds - lastPoseRun >= poseInterval
+        if (!runFace && !runPose) return
+        // Still busy with the previous frame: skip, the next frame asks again.
+        if (!evidenceIdle.compareAndSet(true, false)) return
+        if (runFace) lastFaceRun = seconds
+        if (runPose) lastPoseRun = seconds
+        // The camera reuses its buffers once the frame is closed, so the thread gets a copy.
+        val planes = snapshot.copy(y, u, v)
+        try {
+            evidenceExecutor.execute {
+                try {
+                    evidenceFrames.begin(width, height, planes[0], planes[1], planes[2])
+                    try {
+                        if (runFace) latestFace = findFace(evidenceFrames, cameraRotation, millis)
+                        if (runPose) latestPose = findPose(evidenceFrames, cameraRotation, millis)
+                    } finally {
+                        evidenceFrames.end()
+                        statsAccumulator.rgb(evidenceFrames.takeConversionNanos())
+                    }
+                } finally {
+                    evidenceIdle.set(true)
+                }
+            }
+        } catch (_: RejectedExecutionException) {
+            evidenceIdle.set(true)
+        }
+    }
+
+    /** Waits until the evidence thread has finished what it is doing. */
+    private fun runOnEvidenceThread(block: () -> Unit) {
+        try {
+            evidenceExecutor.submit(block).get()
+        } catch (_: RejectedExecutionException) {
+            block()
+        } catch (_: java.util.concurrent.ExecutionException) {
+        }
+    }
+
+    private fun forgetFace() {
+        lastFaceRun = Double.NEGATIVE_INFINITY
+        latestFace = null
+    }
+
+    private fun forgetPose() {
+        lastPoseRun = Double.NEGATIVE_INFINITY
+        latestPose = null
     }
 
     // Face
 
-    private fun detectFace(candidate: OrientationCandidate, cameraRotation: Int, millis: Long): FaceObservation? {
-        val detector = faceDetector() ?: return null
-        val image = frames.rgb(candidate.rotationDegrees(cameraRotation))
-        val timestamp = maxOf(millis, lastFaceTimestamp + 1).also { lastFaceTimestamp = it }
-        val result = try {
-            detector.detectForVideo(image.mpImage(), timestamp)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Face detection failed", e)
-            return null
+    private fun findFace(
+        source: RgbFrames,
+        cameraRotation: Int,
+        millis: Long,
+    ): OrientationSearch.Hit<FaceObservation>? = synchronized(faceLock) {
+        var detectorNanos = 0L
+        val hit = faceSearch.find { candidate ->
+            val detector = faceDetector() ?: return@find null
+            val image = source.rgb(candidate.rotationDegrees(cameraRotation))
+            val timestamp = maxOf(millis, lastFaceTimestamp + 1).also { lastFaceTimestamp = it }
+            val started = System.nanoTime()
+            val result = try {
+                detector.detectForVideo(image.mpImage(), timestamp)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Face detection failed", e)
+                null
+            } finally {
+                detectorNanos += System.nanoTime() - started
+            }
+            result?.let { faceObservation(it, image) }
         }
+        statsAccumulator.face(detectorNanos)
+        hit
+    }
+
+    private fun faceObservation(
+        result: com.google.mediapipe.tasks.vision.facedetector.FaceDetectorResult,
+        image: RgbImage,
+    ): FaceObservation? {
         // Largest face wins: the athlete is the closest person to the camera.
         val best = result.detections().maxByOrNull { it.boundingBox().width() * it.boundingBox().height() } ?: return null
         val box = best.boundingBox()
@@ -194,17 +337,36 @@ class VisionProcessor(
 
     // Pose
 
-    private fun detectPose(candidate: OrientationCandidate, cameraRotation: Int, millis: Long): BodyPoseObservation? {
-        val landmarker = poseLandmarker(candidate) ?: return null
-        val image = frames.rgb(candidate.rotationDegrees(cameraRotation))
-        val slot = candidate.ordinal
-        val timestamp = maxOf(millis, lastPoseTimestamps[slot] + 1).also { lastPoseTimestamps[slot] = it }
-        val result = try {
-            landmarker.detectForVideo(image.mpImage(), timestamp)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Pose detection failed", e)
-            return null
+    private fun findPose(
+        source: RgbFrames,
+        cameraRotation: Int,
+        millis: Long,
+    ): OrientationSearch.Hit<BodyPoseObservation>? = synchronized(poseLock) {
+        var detectorNanos = 0L
+        val hit = poseSearch.find { candidate ->
+            val landmarker = poseLandmarker(candidate) ?: return@find null
+            val image = source.rgb(candidate.rotationDegrees(cameraRotation))
+            val slot = candidate.ordinal
+            val timestamp = maxOf(millis, lastPoseTimestamps[slot] + 1).also { lastPoseTimestamps[slot] = it }
+            val started = System.nanoTime()
+            val result = try {
+                landmarker.detectForVideo(image.mpImage(), timestamp)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Pose detection failed", e)
+                null
+            } finally {
+                detectorNanos += System.nanoTime() - started
+            }
+            result?.let { poseObservation(it, image) }
         }
+        statsAccumulator.pose(detectorNanos)
+        hit
+    }
+
+    private fun poseObservation(
+        result: com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult,
+        image: RgbImage,
+    ): BodyPoseObservation? {
         val landmarks = result.landmarks().firstOrNull() ?: return null
         val joints = HashMap<PoseJoint, PosePoint>()
         for (joint in PoseJoint.entries) {
@@ -245,15 +407,6 @@ class VisionProcessor(
         }
     }
 
-    private fun closePoseLandmarkers() {
-        for (i in poseLandmarkers.indices) {
-            poseLandmarkers[i]?.close()
-            poseLandmarkers[i] = null
-            lastPoseTimestamps[i] = Long.MIN_VALUE
-        }
-        poseFailed = false
-    }
-
     private fun RgbImage.mpImage(): MPImage =
         ByteBufferImageBuilder(buffer, width, height, MPImage.IMAGE_FORMAT_RGB).build()
 
@@ -262,6 +415,8 @@ class VisionProcessor(
 
     companion object {
         private const val TAG = "VisionProcessor"
+        private const val PERF_TAG = "CindyPerf"
+
         /**
          * Full range, not short range: the short-range model is built for selfie distance (up to
          * about 2 m), and at the top of a pull-up the face is further than that from a phone on
@@ -276,5 +431,28 @@ class VisionProcessor(
 
         /** Below this presence a landmark counts as not recognised, like a joint Vision leaves out. */
         const val MIN_LANDMARK_LIKELIHOOD: Float = 0.5f
+    }
+}
+
+/**
+ * A copy of a frame's three planes for the evidence thread. The buffers are reused and only
+ * reallocated when the frame size changes; copying about 1.4 MB a few times a second is far
+ * cheaper than any detector run.
+ */
+private class YuvSnapshot {
+    private val copies = arrayOfNulls<ByteBuffer>(3)
+
+    fun copy(y: YuvPlane, u: YuvPlane, v: YuvPlane): Array<YuvPlane> =
+        arrayOf(copyPlane(0, y), copyPlane(1, u), copyPlane(2, v))
+
+    private fun copyPlane(index: Int, plane: YuvPlane): YuvPlane {
+        val source = plane.buffer.duplicate()
+        val size = source.remaining()
+        val target = copies[index]?.takeIf { it.capacity() == size }
+            ?: ByteBuffer.allocate(size).also { copies[index] = it }
+        target.clear()
+        target.put(source)
+        target.flip()
+        return YuvPlane(target, plane.rowStride, plane.pixelStride)
     }
 }

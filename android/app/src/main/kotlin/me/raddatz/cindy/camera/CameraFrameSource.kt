@@ -80,6 +80,15 @@ class CameraFrameSource(
         }
     }
 
+    override fun setDetectionIntervals(face: Double, bodyPose: Double) {
+        onFrameThread {
+            vision.faceInterval = face
+            vision.poseInterval = bodyPose
+        }
+    }
+
+    override val stats: VisionStats? get() = vision.stats
+
     override fun setMetricsEnabled(enabled: Boolean) {
         onFrameThread { measuresMetrics = enabled }
     }

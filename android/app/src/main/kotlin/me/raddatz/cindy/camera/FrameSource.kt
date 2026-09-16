@@ -46,14 +46,42 @@ interface FrameSource {
     /** Chooses the detectors; each costs processing time per frame. */
     fun setDetection(face: Boolean, bodyPose: Boolean)
 
+    /**
+     * Minimum time in seconds between two runs of each detector; 0 runs it on every frame. In
+     * between, frames carry the detector's latest result. A detector that only supplies
+     * `BodyEvidence` does not need every frame, and on a slow phone running it on every frame
+     * drags the whole chain — the brightness signal included — down to its speed.
+     */
+    fun setDetectionIntervals(face: Double, bodyPose: Double) {}
+
+    /** Frame rate and per-stage processing time over the last seconds; null before any frame. */
+    val stats: VisionStats? get() = null
+
     /** Measures the brightness (`FrameMetrics`) per frame. */
     fun setMetricsEnabled(enabled: Boolean)
 
     fun setLogger(logger: FrameLogger?, stateProvider: (() -> String)? = null)
 
-    /** Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`. */
+    /**
+     * Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`.
+     * The detector that produces the signal runs on every frame, evidence-only detectors at
+     * [EVIDENCE_INTERVAL].
+     */
     fun setDetection(source: SignalSource) {
         setDetection(face = source != SignalSource.POSE, bodyPose = source != SignalSource.FACE)
+        setDetectionIntervals(
+            face = if (source == SignalSource.FACE) 0.0 else EVIDENCE_INTERVAL,
+            bodyPose = if (source == SignalSource.POSE) 0.0 else EVIDENCE_INTERVAL,
+        )
         setMetricsEnabled(source == SignalSource.BRIGHTNESS)
+    }
+
+    companion object {
+        /**
+         * Seconds between evidence-only detector runs. A squat takes about two seconds and the
+         * evidence asks whether the face or the shoulders grew during it, so four to five looks
+         * per second are plenty.
+         */
+        const val EVIDENCE_INTERVAL: Double = 0.2
     }
 }

@@ -33,6 +33,7 @@ class RgbFrames {
     private val filled = BooleanArray(4)
     private var scratch = ByteArray(0)
     private val rows = RowScratch()
+    private var conversionNanos = 0L
 
     /** Starts a frame; the planes must stay valid until [end]. */
     @Synchronized
@@ -54,15 +55,21 @@ class RgbFrames {
         val buffer = buffers[index]?.takeIf { it.capacity() == size }
             ?: ByteBuffer.allocateDirect(size).also { buffers[index] = it }
         if (!filled[index]) {
+            val started = System.nanoTime()
             if (scratch.size != size) scratch = ByteArray(size)
             RgbConverter.convert(width, height, checkNotNull(y), checkNotNull(u), checkNotNull(v), index * 90, scratch, rows)
             buffer.clear()
             buffer.put(scratch, 0, size)
             buffer.rewind()
             filled[index] = true
+            conversionNanos += System.nanoTime() - started
         }
         return RgbImage(buffer, outWidth, outHeight)
     }
+
+    /** Conversion time since the last call, for [VisionStats]. */
+    @Synchronized
+    fun takeConversionNanos(): Long = conversionNanos.also { conversionNanos = 0 }
 
     /** Drops the plane references of the finished frame. */
     @Synchronized

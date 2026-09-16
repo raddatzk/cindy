@@ -69,7 +69,7 @@ between the first rep and the last.
 EVERYTHING STAYS ON YOUR PHONE
 No account, no sign-up, no server. The camera image is analysed on the device,
 frame by frame, and is never stored, never recorded and never transmitted. What
-leaves a frame is a single number: how large your face appears. Nothing else.
+leaves a frame is a few numbers about your movement. Nothing else.
 
 BUILT AROUND YOUR BODY, NOT AN AVERAGE
 A short calibration measures how your own push-up, pull-up, squat and plank look
@@ -144,8 +144,8 @@ ersten und der letzten Wiederholung fasst du das Display nicht an.
 ALLES BLEIBT AUF DEINEM GERÄT
 Kein Konto, keine Anmeldung, kein Server. Das Kamerabild wird auf dem Gerät
 ausgewertet, Bild für Bild, und dabei nicht gespeichert, nicht aufgezeichnet und
-nicht übertragen. Aus einem Bild bleibt eine einzige Zahl übrig: wie groß dein
-Gesicht darin erscheint. Sonst nichts.
+nicht übertragen. Aus einem Bild bleiben ein paar Zahlen zu deiner Bewegung
+übrig. Sonst nichts.
 
 AUF DEINEN KÖRPER EINGESTELLT, NICHT AUF EINEN DURCHSCHNITT
 Eine kurze Kalibrierung misst, wie dein Liegestütz, dein Klimmzug, deine
@@ -222,9 +222,11 @@ session writes a numbers-only log you can share from Settings › Recordings.
 Written in English; App Store Connect has one review-notes field, not one per
 language.
 
-The desk-test recipe below follows from how the signal works — the face
-bounding-box area grows as the phone comes closer, which is the same shape as a
-rep — but it has not been run on a device yet. Confirm it during the device
+The desk-test recipe below follows from how the signals work — bringing the
+phone closer makes the face bounding box grow (pull-ups, push-ups, plank) and
+darkens the picture while the face grows (squats: brightness with the face as
+a plausibility check), which is the same shape as a rep — but it has not been
+run on a device yet. Confirm it during the device
 test before submitting: review notes that do not work are how a submission ends
 up rejected under guideline 2.1.
 
@@ -244,23 +246,24 @@ push-ups:
    the counter advances, and a higher tone marks the exercise change after the
    configured number of reps.
 
-The signal is the area your face occupies in the frame, which is why moving the
-phone closer and further away behaves exactly like a rep. Reviewing from a chair
-works.
+For pull-ups and push-ups the signal is how large your face appears in the
+frame. For squats it is how dark the picture gets, accepted only when your face
+grows at the same time. Moving the phone closer does both, which is why it
+behaves exactly like a rep. Reviewing from a chair works.
 
 WHAT THE APP DOES WITH THE CAMERA
 
 The camera feed is analysed frame by frame on the device using the Vision
 framework. Nothing is stored, recorded or transmitted; each frame is reduced to
-one number (face bounding-box area) and discarded. There is no account, no
+a few numbers (face bounding-box area, shoulder and nose positions, mean image
+brightness) and discarded. There is no account, no
 network code and no analytics in the app.
 
 EXERCISE DEMOS
 
 Every exercise screen and the plan editor can show a demonstration of the
-movement. These are pre-rendered 3D animations played locally through
-RealityKit, and a drawn stick-figure animation as a fallback. They use no
-camera, no network and no AR session, and are included in the bundle.
+movement as a drawn stick-figure animation. It uses no camera and no network,
+and needs no downloaded assets.
 
 HIDDEN DEVELOPER FEATURE, DISCLOSED
 

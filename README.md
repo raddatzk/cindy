@@ -1,27 +1,63 @@
 # Cindy
 
-Native iOS rep counter for the CrossFit benchmark WOD **"Cindy"** (AMRAP 20 min:
-5 pull-ups, 10 push-ups, 15 air squats). The iPhone lies flat on the floor under
-the pull-up bar, front camera up, and counts reps and rounds from the face
-signal (squats: the image brightness, so the athlete can look wherever they like). Everything runs on device; no video is stored or transmitted.
+Native iOS and Android rep counter for the CrossFit benchmark WOD **"Cindy"**
+(AMRAP 20 min: 5 pull-ups, 10 push-ups, 15 air squats). The phone lies flat on
+the floor under the athlete's face, front camera up, and counts reps and rounds
+from the face signal (squats: the image brightness, so the athlete can look
+wherever they like). Everything runs on device; no video is stored or
+transmitted.
+
+The two apps are separate native code bases with the same design:
+
+```
+ios/       SwiftUI app (XcodeGen project)
+android/   Kotlin app: :core (pure logic, JVM tests) + :app (Compose UI, CameraX, MediaPipe)
+shared/    CSV signal recordings both test suites replay
+tools/     analysis and check scripts
+docs/      store listing
+```
+
+Most of this README describes the design with the iOS names; the Android
+section below maps it onto the Kotlin code. A change to the detection, the
+workout rules or the readiness model belongs in both apps, and the shared CSV
+replays hold both to the same rep counts.
 
 ## Build
+
+### iOS
 
 Requirements: Xcode 26, iOS 26+ device with Face ID, [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```bash
+cd ios
 xcodegen generate            # creates Cindy.xcodeproj from project.yml
 open Cindy.xcodeproj
 ```
 
-The project file is generated and git-ignored; edit `project.yml`, not the
+The project file is generated and git-ignored; edit `ios/project.yml`, not the
 `.xcodeproj`. Set your development team in Xcode (Signing & Capabilities) to run
 on a device. The camera does not work in the simulator, but UI and unit tests do:
 
 ```bash
+cd ios
 xcodebuild -project Cindy.xcodeproj -scheme Cindy \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
+
+### Android
+
+Requirements: JDK 21, Android SDK with platform 37, a device with Android 10+
+and a front camera. The Gradle wrapper fetches everything else.
+
+```bash
+cd android
+./gradlew :core:test :app:testDebugUnitTest    # JVM tests, including the shared CSV replays
+./gradlew :app:lintDebug                       # a string without German translation is an error
+./gradlew :app:installDebug                    # onto a connected device or emulator
+```
+
+The emulator's front camera shows a synthetic scene, so nothing counts there, but
+every screen and permission flow can be walked through.
 
 ## Detection chain
 
@@ -48,7 +84,7 @@ Front camera (30 fps, exposure locked after 2 s)
 | Plank    | `.face`        | face area held inside a band    | nose y               | mean luma        | plank         |
 
 Squats count on the brightness since the device recordings of 2026-09-14
-(`CindyTests/Fixtures/recorded_squats_*`): from the floor the face is only found
+(`shared/fixtures/recorded_squats_*`): from the floor the face is only found
 while the athlete looks down, and the body pose drops out at the bottom of every
 squat when looking ahead. The body darkens the picture the lower it gets, whichever
 way the athlete looks (18 of 18 squats in the two recordings with a still start).
@@ -67,7 +103,8 @@ the rest follows lower values while at rest (walking away after arming). Brightn
 thresholds are shifted by the rest difference (within ±0.1). Either way a cycle that
 stays open longer than 5 s disarms, so a new standing position gets a fresh rest.
 
-All tunables live in `Cindy/Core/SignalConfig.swift` (EMA alpha, 25 % threshold
+All tunables live in `ios/Cindy/Core/SignalConfig.swift` and its twin
+`android/core/…/SignalConfig.kt` (EMA alpha, 25 % threshold
 margin, rep duration limits, arming frames, confidence, lost-timeout, per-exercise
 signal source, face-y weights, calibration timeouts).
 
@@ -187,40 +224,16 @@ is reachable again from Settings › "How Cindy works": what the workout is, how
 the counting works, where the phone goes, what each rep looks like, then a
 hand-off into calibration.
 
-The demo of a single movement has two interchangeable renderers behind
-`ExerciseDemoView`, and is reachable from the plan editor, each calibration step
-and the workout's pause screen:
-
-- `RealityDemoView` plays an animated USDZ through RealityKit's `RealityView`
-  in a *virtual* scene — no pass-through camera, so it never competes with the
-  `AVCaptureSession` that counts reps, and it needs no camera permission.
-  Switching that camera to `.worldTracking` is all that stands between this and
-  real AR.
-- `StickFigureDemoView` draws the same movement as a looping stick figure from
-  the keyframes in `ExerciseDemo.swift`. It needs no assets and is the fallback
-  whenever an exercise has no bundled model.
+The demo of a single movement is `StickFigureDemoView` behind
+`ExerciseDemoView`, reachable from the plan editor, each calibration step and the
+workout's pause screen. It draws a looping stick figure from the keyframes in
+`ExerciseDemo.swift`, together with the floor, the bar and the phone, so every
+exercise shows the phone in the same spot. It needs no assets and no camera.
 
 Camera angle follows `ExerciseDemo.perspective`: side-on for push-up, plank and
-squat, head-on for the pull-up, whose bar is a dot from the side.
-
-### Rebuilding the models
-
-The USDZ files in `Cindy/Resources/` are generated, not authored by hand. They
-come from Mixamo's X Bot character plus one "without skin" animation per
-exercise, run through headless Blender:
-
-```
-Blender --background --factory-startup --python tools/build_exercise_usdz.py -- \
-    --animation "~/Downloads/cindy-mixamo/Push Up.fbx" \
-    --character "~/Downloads/cindy-mixamo/X Bot.fbx" \
-    --out Cindy/Resources/demo_pushup.usdz --preview /tmp/pushup.png
-```
-
-Mixamo has no usable pull-up, so `tools/build_pullup_usdz.py` poses that one
-directly on the same rig and adds the bar. Both scripts centre the movement on
-the origin and scale it across its whole frame range (`--size`, default 1.7 m),
-which is why `RealityDemoView` does no scaling of its own — change one and the
-`modelExtent` constant has to follow.
+squat, head-on for the pull-up, whose bar is a dot from the side. For push-ups the
+phone lies between the hands, so it is drawn behind the near arm and in front of
+the far one.
 
 ## Debug / recording mode
 
@@ -251,9 +264,9 @@ confidence, the pose orientation and the image brightness (`luma_mean`, `luma_ce
 The debug recorder always runs the face request, so its drop-outs stay visible
 next to a body-pose signal.
 
-Drop recordings into `CindyTests/Fixtures/` and add a case to
-`PipelineReplayTests` to turn them into regression tests
-(`CSVSignalReplay` parses the logger format).
+Drop recordings into `shared/fixtures/` and add a case to
+`PipelineReplayTests` in both apps to turn them into regression tests
+(`CSVSignalReplay` parses the logger format, which is the same on Android).
 
 ## Language and appearance
 
@@ -262,7 +275,7 @@ Settings offer **Language** (Automatic / English / Deutsch) and **Appearance**
 take effect immediately — no restart.
 
 Source strings are English and act as their own keys. German lives in
-`Cindy/Resources/de.lproj/Localizable.strings`; `en.lproj` exists so that picking
+`ios/Cindy/Resources/de.lproj/Localizable.strings`; `en.lproj` exists so that picking
 English explicitly resolves a real bundle instead of falling back. Plural forms
 (rounds, reps, minutes, seconds) are in `Localizable.stringsdict`, not built by
 string concatenation.
@@ -289,37 +302,98 @@ which is a darker orange in light mode for contrast on white. The workout screen
 uses `.screenBackground` instead of the hardcoded black it had before, so its
 timer, countdown and error overlays stay legible in both schemes.
 
+## Android
+
+The Android app is a port, not a rewrite: the same pipeline, thresholds, state
+machine, readiness curves and screens, with the platform parts swapped.
+
+| iOS | Android |
+|---|---|
+| Pure Swift in `Signal/`, `Calibration/`, `Workout/`, `Health/`, `Reminder/`, `Persistence/` | `:core`, plain Kotlin/JVM with the same type names; no Android imports |
+| AVFoundation camera, exposure and white balance locked after 2 s | CameraX `ImageAnalysis`, locked through Camera2 interop where the device supports it |
+| Vision face rectangles and body pose, per-request orientation search | MediaPipe Tasks face detector and pose landmarker, same orientation search, coordinates mapped to Vision's convention |
+| AVAudioEngine beeps, audible on silent | `AudioTrack` on the media stream, transient ducking audio focus |
+| HealthKit, `HKWorkoutBuilder` | Health Connect, `ExerciseSessionRecord` with one segment per round, workout UUID as `clientRecordId` |
+| `UNCalendarNotificationTrigger` + `BGAppRefreshTask` | WorkManager: a delayed one-off worker posts the reminder, a 12 h periodic worker recomputes |
+| `UserDefaults`, `Documents/` | `SharedPreferences` with the same keys, `filesDir` with the same file names |
+| SwiftUI, `L("…")` with a runtime bundle | Compose + Material 3, string resources, `AppCompatDelegate.setApplicationLocales` |
+
+Differences that come from the platform, not from choice:
+
+- **No network, no Play services.** Detection runs on MediaPipe with its models
+  bundled in `app/src/main/assets/mediapipe/` (sources and checksums in
+  `MODELS.md` there). ML Kit was tried first and dropped: it hands usage data to
+  Google Play services, which no manifest entry can stop. The manifest removes
+  the `INTERNET` permission, and MediaPipe's usage logger links against inert
+  stand-ins for Google's data-transport library, so nothing can leave the phone.
+- **HRV is RMSSD.** Health Connect has no SDNN. The estimator only compares a
+  value with the user's own 60-day baseline, so the curves are unchanged, but a
+  baseline must never mix the two.
+- **Background reads need their own permission.** Without
+  `READ_HEALTH_DATA_IN_BACKGROUND` the periodic worker computes readiness from the
+  history alone. Reads older than 30 days need `READ_HEALTH_DATA_HISTORY`.
+- **Timing is approximate.** WorkManager and Doze may delay the reminder, like
+  iOS may delay the refresh. No exact alarms, so no special permission.
+- **Exposure lock is optional hardware.** Where a device cannot lock exposure the
+  brightness signal for squats is less stable; calibration still measures it.
+
+Engines (`WorkoutEngine`, `CalibrationEngine`) expose `StateFlow`s, run on
+injectable dispatchers and a fake frame source in the JVM tests, and are bound to
+`ProcessLifecycleOwner`, so a language or theme switch that recreates the
+activity does not stop the camera.
+
+Seeding test data on a device or emulator: files have to be written through
+`run-as`, because a copy via `/data/local/tmp` keeps the shell's SELinux label and
+the app silently cannot read it.
+
+```bash
+adb exec-in run-as me.raddatz.cindy sh -c 'cat > files/history.json' < history.json
+```
+
 ## Layout
 
 ```
-Cindy/
-  App/           CindyApp, AppModel, RootView (navigation)
-  Core/          Exercise, SignalConfig, Localization, AppLanguage, AppTheme, Theme (colors)
-  Signal/        FrameObservation, SignalExtractor, MedianFilter, EMAFilter, RepDetector, RepThresholds,
-                 BodyEvidence, SignalPipeline
-  Camera/        CameraSession (AVFoundation), VisionProcessor (Vision), FrameProcessor (queue glue),
-                 FrameMetricsCalculator (image brightness)
-  Calibration/   CalibrationProfile (+ store), CalibrationAnalyzer (pure), CalibrationEngine
-  Workout/       WorkoutStateMachine (pure), WorkoutEngine (camera + clock + audio)
-  Audio/         AudioFeedback (beeps via AVAudioEngine)
-  Persistence/   JSONFileStore, HistoryStore
-  Demo/          ExerciseDemo (poses + cues), StickFigureDemoView, RealityDemoView
-  Debug/         FrameLogger (CSV), DebugRecorderView
-  Resources/     Assets.xcassets, en.lproj + de.lproj (strings, stringsdict, InfoPlist)
-  UI/            Start, Onboarding, Settings, Calibration, Workout, Result, History, camera preview, sparkline
-CindyTests/      Swift Testing unit tests + CSV fixtures
-tools/           analyze_csv.py, check_localization.py, build_exercise_usdz.py, build_pullup_usdz.py
+ios/
+  project.yml    XcodeGen project (the .xcodeproj is generated)
+  Cindy/
+    App/           CindyApp, AppModel, RootView (navigation)
+    Core/          Exercise, SignalConfig, Localization, AppLanguage, AppTheme, Theme (colors)
+    Signal/        FrameObservation, SignalExtractor, MedianFilter, EMAFilter, RepDetector, RepThresholds,
+                   BodyEvidence, SignalPipeline
+    Camera/        CameraSession (AVFoundation), VisionProcessor (Vision), FrameProcessor (queue glue),
+                   FrameMetricsCalculator (image brightness)
+    Calibration/   CalibrationProfile (+ store), CalibrationAnalyzer (pure), CalibrationEngine
+    Workout/       WorkoutStateMachine (pure), WorkoutEngine (camera + clock + audio)
+    Audio/         AudioFeedback (beeps via AVAudioEngine)
+    Persistence/   JSONFileStore, HistoryStore
+    Demo/          ExerciseDemo (poses + cues), StickFigureDemoView, ExerciseDemoView
+    Debug/         FrameLogger (CSV), DebugRecorderView
+    Resources/     Assets.xcassets, en.lproj + de.lproj (strings, stringsdict, InfoPlist)
+    UI/            Start, Onboarding, Settings, Calibration, Workout, Result, History, camera preview, sparkline
+  CindyTests/      Swift Testing unit tests
+android/
+  core/            me.raddatz.cindy.core: signal, calibration, workout, health, reminder, persistence,
+                   debug, demo, camera (brightness) — pure Kotlin, JUnit tests
+  app/             me.raddatz.cindy: camera (CameraX + MediaPipe), audio, health (Health Connect),
+                   reminder (WorkManager), workout + calibration engines, settings, app (AppModel,
+                   navigation), ui (Compose screens, stick figure, theme)
+shared/fixtures/   CSV recordings replayed by both test suites
+tools/             analyze_csv.py, check_localization.py (iOS catalogs), check_listing.py
 ```
 
 ## CI and release
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request:
-it regenerates the project from `project.yml`, checks both string catalogs with
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request,
+with one job per platform. The iOS job regenerates the project from
+`ios/project.yml`, checks both string catalogs with
 `tools/check_localization.py`, runs the unit tests on whatever iPhone simulator
 the runner has, and builds Release once so `#if DEBUG`-only breakage shows up
-here. It signs nothing and needs no secrets.
+here. The Android job runs on Linux: the JVM tests of both modules, lint (which
+fails on a missing German string) and a Release build, so a missing R8 keep rule
+shows up before a Play build. Neither signs anything or needs secrets.
 
-`.github/workflows/release.yml` archives and uploads to TestFlight. Start it by
+`.github/workflows/release.yml` archives the iOS app and uploads it to
+TestFlight; there is no Play release job yet. Start it by
 hand (Actions → Release to TestFlight → Run workflow) or push a `v*` tag; a tag
 that disagrees with `MARKETING_VERSION` in `project.yml` fails the run instead
 of arriving in App Store Connect as the wrong version. The build number is the
@@ -370,7 +444,7 @@ when the archive fails.
 
 ## Privacy
 
-`Cindy/PrivacyInfo.xcprivacy` declares no tracking, no collected data and the
+`ios/Cindy/PrivacyInfo.xcprivacy` declares no tracking, no collected data and the
 one required-reason API the app uses: `UserDefaults` (`CA92.1`, its own
 defaults). The release workflow asserts the manifest is actually inside the
 archived `.app`, because it is included implicitly by living under the sources

@@ -4,7 +4,7 @@
 
 ## English
 
-**Last updated: September 15, 2026**
+**Last updated: September 16, 2026**
 
 The English and the German version say the same thing. Where they differ in a
 point of law, the German version applies.
@@ -16,9 +16,13 @@ Email: kevin@raddatz.me
 
 ### 2. The short version
 
+Cindy is available for iPhone and for Android. This policy covers both; where
+they differ, the section says so.
+
 Cindy has no server. There is no user account, no sign-in and no service the
-app sends data to. The app requests no network access of any kind. Everything
-it records stays on your device – and, if you choose, in Apple Health as well
+app sends data to. The app requests no network access of any kind – on Android
+it does not even hold the internet permission. Everything it records stays on
+your device – and, if you choose, in Apple Health or Health Connect as well
 (see section 5). It contains no analytics, advertising or tracking libraries.
 
 ### 3. The camera
@@ -26,9 +30,11 @@ it records stays on your device – and, if you choose, in Apple Health as well
 Cindy counts reps by analysing the picture from the front camera. The app asks
 for permission for this the first time it starts.
 
-The analysis runs **entirely on the device**, in Apple's Vision framework. Each
-camera frame is reduced to a single number – how large your face appears in the
-picture – from which the app detects movement. The frames themselves are
+The analysis runs **entirely on the device** – on iPhone in Apple's Vision
+framework, on Android in Google's open-source MediaPipe library, whose models
+ship inside the app. Each camera frame is reduced to a few numbers – how large
+your face appears, where your shoulders are, how bright the picture is – from
+which the app detects movement. The frames themselves are
 **neither stored nor transmitted**; they exist only for the fraction of a second
 in memory in which they are processed. No video or photo file is created.
 
@@ -50,13 +56,18 @@ Stored locally:
 This data lives exclusively in the app's own storage on your device. It is not
 synchronised and not transmitted; I receive none of it.
 
-### 5. Apple Health
+### 5. Apple Health and Health Connect
+
+On iPhone this is Apple Health, on Android Health Connect. Both work the same
+way for Cindy; "Health" below means whichever your device uses.
 
 If you wish – turned on and off in the app's settings under "Sync to Apple
-Health" – Cindy writes finished workouts to Apple Health: start and duration,
+Health" or "Sync to Health Connect" – Cindy writes finished workouts to Health: start and duration,
 the individual rounds as segments, and score, round count and plan as additional
 details. If your body weight is recorded in Health, an estimated active energy
-is added; without a weight the app writes no energy.
+is added; without a weight the app writes no energy. On Android the details
+are stored in the workout's notes, as Health Connect has no separate field for
+them.
 
 Exactly four values are read: your **body weight** (for the energy estimate) and
 **sleep analysis**, **resting heart rate** and **heart rate variability** – only
@@ -64,13 +75,17 @@ for the readiness display, which tells you whether today is a good day to train.
 This evaluation happens entirely on the device; the values are neither stored
 nor shared. Everything else in Health stays invisible to the app. You allow each
 value – written or read – individually in the Health dialog, and can revoke it
-at any time under "Settings → Apps → Health → Data Access". With the switch off,
-Cindy does not access Health at all.
+at any time: on iPhone under "Settings → Apps → Health → Data Access", on
+Android in Health Connect under "App permissions". On Android Cindy also asks
+to read in the background, so the reminder (section 6) can take your latest
+values into account, and to read data older than 30 days, for your personal
+baseline. Both are optional. With the switch off, Cindy does not access Health
+at all.
 
-Apple Health lives on your device. If you have turned on iCloud for Health in
-the system settings, **Apple** synchronises this data between your devices –
-that is Apple's service, not mine; I have no access to it. Cindy itself still
-sends nothing.
+Apple Health and Health Connect live on your device. If you have turned on
+iCloud for Health, **Apple** synchronises this data between your devices; if
+another app you use syncs Health Connect, that app does. That is their service,
+not mine; I have no access to it. Cindy itself still sends nothing.
 
 Health data is a special category of personal data. The legal basis is your
 explicit consent under Art. 9(2)(a) GDPR, which you give in the Health dialog.
@@ -88,8 +103,9 @@ your last workout was, your readiness estimate and the time of day you usually
 train.
 
 So that the time can still move when you are not opening the app, Cindy
-occasionally wakes briefly in the background (iOS "Background App Refresh").
-This only recalculates; nothing is transmitted. You can turn this off in the
+occasionally wakes briefly in the background (iOS "Background App Refresh", on
+Android a scheduled background task). This only recalculates; nothing is
+transmitted. You can turn this off in the
 system settings.
 
 Legal basis: Art. 6(1)(a) GDPR (consent).
@@ -113,11 +129,15 @@ permission.
 ### 9. No tracking, no analytics, no advertising
 
 Cindy contains no analytics or advertising SDKs, no third-party crash reporter
-and no advertising identifiers. There is no tracking in the sense of the App
-Tracking Transparency framework, neither within the app nor across other apps or
-websites.
+and no advertising identifiers. There is no tracking, neither within the app nor
+across other apps or websites – on iPhone in the sense of the App Tracking
+Transparency framework as well.
 
-### 10. Reports via Apple
+The Android app deliberately does without Google Play services and does not
+hold the internet permission, so the libraries it contains cannot send
+diagnostics either.
+
+### 10. Reports via Apple and Google
 
 If you have agreed in your device's system settings to share diagnostics and
 usage data with app developers, Apple provides me with crash reports and
@@ -126,6 +146,11 @@ Apple; it contains no workout data and does not allow conclusions about
 individual people. You can withdraw this consent at any time under "Settings →
 Privacy & Security → Analytics & Improvements".
 
+On Android the same applies to Google: if you share usage and diagnostics
+with Google, Google Play gives me crash reports and aggregated statistics
+about the app, prepared by Google and without workout data. You change this in
+your device's Google settings under "Usage & diagnostics".
+
 ### 11. Retention and deletion
 
 Since I receive no data from you, I store nothing either. You delete your data
@@ -133,9 +158,11 @@ yourself: deleting the app removes everything it created – calibration,
 history, plan, settings and any recordings. Individual recordings can be removed
 in the app's settings.
 
-Whatever has already been written to Apple Health belongs to Health from then
-on and remains after the app is deleted. You remove those entries in the Health
-app itself (under "Browse → Activity → Workouts" or via "Sources → Cindy").
+Whatever has already been written to Apple Health or Health Connect belongs to
+Health from then on and remains after the app is deleted. You remove those
+entries there: in the Health app under "Browse → Activity → Workouts" or via
+"Sources → Cindy", in Health Connect under "App permissions → Cindy → Delete
+app data".
 
 ### 12. Your rights
 
@@ -159,14 +186,14 @@ children – the app collects no data at all.
 ### 14. Changes to this policy
 
 If the way the app works changes, I update this policy. The version in force is
-always at the address given for Cindy in the App Store; the date above states
-when it was last updated.
+always at the address given for Cindy in the App Store and on Google Play; the
+date above states when it was last updated.
 
 ---
 
 ## Deutsch
 
-**Stand: 15. September 2026**
+**Stand: 16. September 2026**
 
 ### 1. Verantwortlicher
 
@@ -175,20 +202,26 @@ E-Mail: kevin@raddatz.me
 
 ### 2. Das Wichtigste zuerst
 
+Cindy gibt es für das iPhone und für Android. Diese Erklärung gilt für beide;
+wo sie sich unterscheiden, steht es im jeweiligen Abschnitt.
+
 Cindy kommt ohne Server aus. Es gibt kein Nutzerkonto, keine Anmeldung und
 keinen Dienst, an den die App Daten sendet. Die App fordert keinerlei
-Netzwerkzugriff an. Alles, was sie erfasst, bleibt auf deinem Gerät – wenn du
-es möchtest, zusätzlich in Apple Health (siehe Abschnitt 5). Sie
-enthält keine Analyse-, Werbe- oder Tracking-Bibliotheken.
+Netzwerkzugriff an – unter Android besitzt sie nicht einmal die
+Internet-Berechtigung. Alles, was sie erfasst, bleibt auf deinem Gerät – wenn
+du es möchtest, zusätzlich in Apple Health oder Health Connect (siehe
+Abschnitt 5). Sie enthält keine Analyse-, Werbe- oder Tracking-Bibliotheken.
 
 ### 3. Die Kamera
 
 Cindy zählt Wiederholungen, indem sie das Bild der Frontkamera auswertet.
 Dafür fragt die App beim ersten Start um Erlaubnis.
 
-Die Auswertung läuft **vollständig auf dem Gerät**, in Apples
-Vision-Framework. Aus jedem Kamerabild wird eine einzige Zahl gewonnen – die
-Größe deines Gesichts im Bild –, aus der die App Bewegung erkennt. Die Bilder
+Die Auswertung läuft **vollständig auf dem Gerät** – auf dem iPhone in Apples
+Vision-Framework, unter Android in Googles quelloffener Bibliothek MediaPipe,
+deren Modelle in der App mitgeliefert werden. Aus jedem Kamerabild werden
+wenige Zahlen gewonnen – wie groß dein Gesicht erscheint, wo deine Schultern
+sind, wie hell das Bild ist –, aus denen die App Bewegung erkennt. Die Bilder
 selbst werden **weder gespeichert noch übertragen**; sie existieren nur für
 den Bruchteil einer Sekunde im Arbeitsspeicher, in dem sie verarbeitet werden.
 Es entsteht keine Video- oder Fotodatei.
@@ -212,14 +245,18 @@ Diese Daten liegen ausschließlich im Speicherbereich der App auf deinem Gerät.
 Sie werden nicht synchronisiert und nicht gesichert übertragen; ich erhalte
 davon nichts.
 
-### 5. Apple Health
+### 5. Apple Health und Health Connect
+
+Auf dem iPhone ist das Apple Health, unter Android Health Connect. Für Cindy
+funktionieren beide gleich; „Health" meint unten das, was dein Gerät verwendet.
 
 Auf Wunsch – abzuschalten und einzuschalten in den Einstellungen unter „Mit
-Apple Health synchronisieren" – schreibt Cindy beendete Workouts in Apple
-Health: Beginn und Dauer, die einzelnen Runden als Abschnitte sowie Score,
+Apple Health synchronisieren" bzw. „Mit Health Connect synchronisieren" –
+schreibt Cindy beendete Workouts in Health: Beginn und Dauer, die einzelnen Runden als Abschnitte sowie Score,
 Rundenzahl und Plan als Zusatzangaben. Ist dein Körpergewicht in Health
 hinterlegt, kommt eine geschätzte Aktivitätsenergie dazu; ohne Gewicht
-schreibt die App keine Energie.
+schreibt die App keine Energie. Unter Android stehen die Zusatzangaben in den
+Notizen des Workouts, weil Health Connect dafür kein eigenes Feld hat.
 
 Gelesen werden genau vier Werte: dein **Körpergewicht** (für die
 Energieschätzung) sowie **Schlafanalyse**, **Ruhepuls** und
@@ -228,14 +265,20 @@ die dir sagt,
 ob heute ein guter Trainingstag ist. Diese Auswertung passiert vollständig auf
 dem Gerät; die Werte werden weder gespeichert noch weitergegeben. Alles andere
 in Health bleibt für die App unsichtbar. Jeden Wert – geschrieben wie gelesen –
-erlaubst du im Health-Dialog einzeln und kannst es jederzeit unter
-„Einstellungen → Apps → Health → Datenzugriff" widerrufen. Ist der Schalter
-aus, greift Cindy überhaupt nicht auf Health zu.
+erlaubst du im Health-Dialog einzeln und kannst es jederzeit widerrufen: auf
+dem iPhone unter „Einstellungen → Apps → Health → Datenzugriff", unter Android
+in Health Connect unter „App-Berechtigungen". Unter Android fragt Cindy
+zusätzlich, ob sie im Hintergrund lesen darf, damit die Erinnerung
+(Abschnitt 6) deine aktuellen Werte berücksichtigen kann, und ob sie Daten
+lesen darf, die älter als 30 Tage sind, für deinen persönlichen Vergleichswert.
+Beides ist freiwillig. Ist der Schalter aus, greift Cindy überhaupt nicht auf
+Health zu.
 
-Apple Health liegt auf deinem Gerät. Wenn du in den Systemeinstellungen
-iCloud für Health aktiviert hast, synchronisiert **Apple** diese Daten
-zwischen deinen Geräten – das ist Apples Dienst, nicht meiner; ich habe
-darauf keinen Zugriff. Cindy selbst sendet weiterhin nichts.
+Apple Health und Health Connect liegen auf deinem Gerät. Wenn du iCloud für
+Health aktiviert hast, synchronisiert **Apple** diese Daten zwischen deinen
+Geräten; synchronisiert eine andere App, die du nutzt, Health Connect, tut das
+diese App. Das ist deren Dienst, nicht meiner; ich habe darauf keinen Zugriff.
+Cindy selbst sendet weiterhin nichts.
 
 Gesundheitsdaten sind eine besondere Kategorie personenbezogener Daten.
 Rechtsgrundlage ist deine ausdrückliche Einwilligung nach Art. 9 Abs. 2
@@ -255,8 +298,8 @@ zu der du sonst trainierst.
 
 Damit sich der Zeitpunkt auch dann noch verschieben kann, wenn du die App
 gerade nicht öffnest, meldet sich Cindy gelegentlich im Hintergrund kurz zu
-Wort (iOS „Hintergrundaktualisierung"). Dabei wird nur neu gerechnet; es wird
-nichts übertragen. Du kannst das in den Systemeinstellungen abschalten.
+Wort (iOS „Hintergrundaktualisierung", unter Android eine geplante
+Hintergrundaufgabe). Dabei wird nur neu gerechnet; es wird nichts übertragen. Du kannst das in den Systemeinstellungen abschalten.
 
 Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).
 
@@ -280,11 +323,15 @@ Mikrofonberechtigung an.
 ### 9. Kein Tracking, keine Analyse, keine Werbung
 
 Cindy enthält keine Analyse- oder Werbe-SDKs, keinen Absturzmelder eines
-Drittanbieters und keine Werbe-Identifikatoren. Es findet kein Tracking im
-Sinne des App-Tracking-Transparency-Rahmens statt, weder innerhalb der App
-noch über andere Apps oder Websites hinweg.
+Drittanbieters und keine Werbe-Identifikatoren. Es findet kein Tracking statt,
+weder innerhalb der App noch über andere Apps oder Websites hinweg – auf dem
+iPhone auch nicht im Sinne des App-Tracking-Transparency-Rahmens.
 
-### 10. Berichte über Apple
+Die Android-App verzichtet bewusst auf die Google-Play-Dienste und besitzt
+keine Internet-Berechtigung, sodass auch die enthaltenen Bibliotheken keine
+Diagnosedaten versenden können.
+
+### 10. Berichte über Apple und Google
 
 Wenn du in den Systemeinstellungen deines Geräts zugestimmt hast, Diagnose-
 und Nutzungsdaten mit App-Entwicklern zu teilen, stellt Apple mir
@@ -294,6 +341,11 @@ keine Trainingsdaten und lassen keinen Rückschluss auf einzelne Personen zu.
 Die Zustimmung kannst du jederzeit unter „Einstellungen → Datenschutz &
 Sicherheit → Analyse & Verbesserungen" widerrufen.
 
+Unter Android gilt dasselbe für Google: Teilst du Nutzungs- und Diagnosedaten
+mit Google, stellt mir Google Play Absturzberichte und aggregierte Statistiken
+zur App bereit, von Google aufbereitet und ohne Trainingsdaten. Das änderst du
+in den Google-Einstellungen deines Geräts unter „Nutzung und Diagnose".
+
 ### 11. Speicherdauer und Löschen
 
 Da ich keine Daten von dir erhalte, speichere ich auch nichts. Deine Daten
@@ -301,10 +353,11 @@ löschst du selbst: Die App zu löschen entfernt alles, was sie angelegt hat –
 Kalibrierung, Verlauf, Plan, Einstellungen und etwaige Aufnahmen. Einzelne
 Aufnahmen lassen sich in den Einstellungen der App entfernen.
 
-Was bereits in Apple Health geschrieben wurde, gehört ab dann Health und
-bleibt auch nach dem Löschen der App erhalten. Diese Einträge entfernst du in
-der Health-App selbst (unter „Durchsuchen → Aktivität → Trainings" oder über
-„Quellen → Cindy").
+Was bereits in Apple Health oder Health Connect geschrieben wurde, gehört ab
+dann Health und bleibt auch nach dem Löschen der App erhalten. Diese Einträge
+entfernst du dort: in der Health-App unter „Durchsuchen → Aktivität →
+Trainings" oder über „Quellen → Cindy", in Health Connect unter
+„App-Berechtigungen → Cindy → App-Daten löschen".
 
 ### 12. Deine Rechte
 
@@ -328,5 +381,5 @@ von Kindern – die App erhebt überhaupt keine Daten.
 ### 14. Änderungen dieser Erklärung
 
 Ändert sich die Funktionsweise der App, passe ich diese Erklärung an. Die
-jeweils gültige Fassung findest du unter der Adresse, die im App Store bei
-Cindy hinterlegt ist; das Datum oben nennt den Stand.
+jeweils gültige Fassung findest du unter der Adresse, die im App Store und bei
+Google Play für Cindy hinterlegt ist; das Datum oben nennt den Stand.

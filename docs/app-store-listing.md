@@ -63,7 +63,7 @@ Cindy counts your reps so you don't have to.
 Put the phone on the floor under your pull-up bar, front camera up, and start
 the workout: 20 minutes, as many rounds as possible of 5 pull-ups, 10 push-ups
 and 15 air squats. Cindy sees each rep through the front camera, counts it,
-announces the exercise change and keeps the clock. You never touch the screen
+beeps when an exercise is done and keeps the clock. You never touch the screen
 between the first rep and the last.
 
 EVERYTHING STAYS ON YOUR PHONE
@@ -138,7 +138,7 @@ Cindy zählt deine Wiederholungen, damit du es nicht musst.
 Leg das Handy unter deine Klimmzugstange auf den Boden, Frontkamera nach oben,
 und starte: 20 Minuten, so viele Runden wie möglich aus 5 Klimmzügen, 10
 Liegestützen und 15 Kniebeugen. Cindy erkennt jede Wiederholung durch die
-Frontkamera, zählt sie, sagt den Wechsel an und führt die Uhr. Zwischen der
+Frontkamera, zählt sie, piept beim Wechsel und führt die Uhr. Zwischen der
 ersten und der letzten Wiederholung fasst du das Display nicht an.
 
 ALLES BLEIBT AUF DEINEM GERÄT
@@ -241,7 +241,7 @@ push-ups:
    slowly towards your face and back again, once. That is one full cycle as far
    as the app is concerned, and calibration completes.
 3. Start the workout. Moving the phone towards your face and back counts a rep,
-   the counter advances, and the app announces the exercise change after the
+   the counter advances, and a higher tone marks the exercise change after the
    configured number of reps.
 
 The signal is the area your face occupies in the frame, which is why moving the

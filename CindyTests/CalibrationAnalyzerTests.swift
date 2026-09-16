@@ -73,7 +73,7 @@ struct CalibrationAnalyzerTests {
         var profile = CalibrationProfile()
         #expect(profile.isComplete == false)
         for exercise in Exercise.allCases {
-            profile.set(ExerciseCalibration(source: .face, minValue: 0.1, maxValue: 0.3, baseline: 0.1, low: 0.15,
+            profile.set(ExerciseCalibration(source: SignalConfig.default.source(for: exercise), minValue: 0.1, maxValue: 0.3, baseline: 0.1, low: 0.15,
                                             high: 0.25, direction: exercise.defaultRepDirection, repDuration: 1.2,
                                             calibratedAt: Date()), for: exercise)
         }
@@ -82,6 +82,24 @@ struct CalibrationAnalyzerTests {
         let loaded = try #require(store.load())
         #expect(loaded.isComplete)
         #expect(loaded.calibration(for: .pullUp)?.direction == .trough)
-        #expect(loaded.calibration(for: .squat)?.thresholds == RepThresholds(low: 0.15, high: 0.25, direction: .peak))
+        #expect(loaded.calibration(for: .squat)?.thresholds == RepThresholds(low: 0.15, high: 0.25, direction: .peak,
+                                                                                baseline: 0.1))
+    }
+
+    @Test func calibrationsOnAnOldSignalSourceAreDropped() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = CalibrationStore(url: directory.appendingPathComponent("calibration.json"))
+        var profile = CalibrationProfile()
+        for exercise in Exercise.allCases {
+            // Every exercise on the face, as squats were calibrated before they moved to body pose.
+            profile.set(ExerciseCalibration(source: .face, minValue: 0.1, maxValue: 0.3, baseline: 0.1, low: 0.15,
+                                            high: 0.25, direction: exercise.defaultRepDirection, repDuration: 1.2,
+                                            calibratedAt: Date()), for: exercise)
+        }
+        try store.save(profile)
+        let loaded = try #require(store.load())
+        #expect(loaded.missingExercises(for: .cindy) == [.squat])
+        #expect(loaded.calibration(for: .pushUp) != nil)
     }
 }

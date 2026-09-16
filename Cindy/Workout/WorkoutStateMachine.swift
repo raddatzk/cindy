@@ -36,7 +36,7 @@ struct WorkoutScore: Equatable, Codable, Sendable {
 /// Pure state machine for the AMRAP: exercise order, rep counter, rounds and
 /// manual corrections. Time is handled by the engine that drives it.
 final class WorkoutStateMachine {
-    let plan: WorkoutPlan
+    private(set) var plan: WorkoutPlan
     private(set) var phase: WorkoutPhase = .idle
     private(set) var exercise: Exercise
     private(set) var repCount = 0
@@ -100,6 +100,33 @@ final class WorkoutStateMachine {
         return [.finished]
     }
 
+    // MARK: - Changing the plan
+
+    /// Swaps the plan mid-workout. Completed rounds stay. The current exercise keeps its
+    /// reps and is done at once if they already reach the new target. If it was removed,
+    /// the round goes on with the first exercise of the new plan not yet done in this
+    /// round, or counts as complete when nothing is left.
+    @discardableResult
+    func replacePlan(_ newPlan: WorkoutPlan) -> [WorkoutEvent] {
+        guard newPlan.isValid, phase != .finished else { return [] }
+        let doneThisRound = plan.exercises.prefix { $0 != exercise }
+        plan = newPlan
+        if newPlan.contains(exercise) {
+            return repCount >= newPlan.countTarget(for: exercise) ? completeExercise() : []
+        }
+        repCount = 0
+        if phase == .active {
+            phase = .transition
+        }
+        if let next = newPlan.exercises.first(where: { !doneThisRound.contains($0) }) {
+            exercise = next
+            return []
+        }
+        completedRounds += 1
+        exercise = newPlan.first
+        return [.roundCompleted(completedRounds)]
+    }
+
     // MARK: - Counting
 
     /// A rep detected by the signal chain (only accepted while active).
@@ -124,17 +151,23 @@ final class WorkoutStateMachine {
         repCount += 1
         var events: [WorkoutEvent] = [.repCounted(exercise, count: repCount)]
         if repCount >= plan.countTarget(for: exercise) {
-            let finished = exercise
-            if plan.isLast(finished) {
-                completedRounds += 1
-                events.append(.roundCompleted(completedRounds))
-            }
-            exercise = plan.next(after: finished)
-            repCount = 0
-            events.append(.exerciseCompleted(finished, next: exercise))
-            if phase == .active {
-                phase = .transition
-            }
+            events += completeExercise()
+        }
+        return events
+    }
+
+    private func completeExercise() -> [WorkoutEvent] {
+        let finished = exercise
+        var events: [WorkoutEvent] = []
+        if plan.isLast(finished) {
+            completedRounds += 1
+            events.append(.roundCompleted(completedRounds))
+        }
+        exercise = plan.next(after: finished)
+        repCount = 0
+        events.append(.exerciseCompleted(finished, next: exercise))
+        if phase == .active {
+            phase = .transition
         }
         return events
     }

@@ -21,7 +21,6 @@
 "Edit workout" = "Workout anpassen";
 "Duration" = "Dauer";
 "Exercises per round" = "Übungen pro Runde";
-"Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.";
 "Not in the plan" = "Nicht im Plan";
 "Add %@" = "%@ hinzufügen";
 "Reset to the original Cindy" = "Auf Original Cindy zurücksetzen";
@@ -63,7 +62,6 @@
 "Calibration" = "Kalibrierung";
 "How it works" = "So funktioniert’s";
 "Phone flat on the floor under the pull-up bar, screen facing up." = "Handy flach auf den Boden unter die Klimmzugstange, Display nach oben.";
-"Recommended: tilt the phone slightly (30–45°), for example leaning against a weight plate. This improves the signal a lot." = "Empfohlen: Handy leicht ankippen (30–45°), z. B. gegen eine Hantelscheibe lehnen. Das verbessert das Signal deutlich.";
 "Calibrate in your workout clothes, without a cap or hood." = "In Trainingskleidung kalibrieren, ohne Cap oder Kapuze.";
 "One rep of each, one after another: %@. Hold still in the start position before every countdown." = "Nacheinander je eine Wiederholung: %@. Vor jedem Countdown in der Ausgangsposition ruhig bleiben.";
 "Everything stays on the device. No images are stored." = "Alles bleibt auf dem Gerät. Es werden keine Bilder gespeichert.";
@@ -84,17 +82,18 @@
 "Continue" = "Weiter";
 "Done" = "Fertig";
 "Calibration saved" = "Kalibrierung gespeichert";
-"Calibration complete" = "Kalibrierung abgeschlossen";
 "Back to start" = "Zum Start";
 "Open Settings" = "Einstellungen öffnen";
 "Face detected" = "Gesicht erkannt";
 "No face in frame" = "Kein Gesicht im Bild";
+"Person detected" = "Person erkannt";
+"No person in frame" = "Keine Person im Bild";
+"The picture hardly got darker during the squat. Keep your toes right behind the phone; a bright ceiling light above you helps, a bright top on a bright ceiling does not." = "Das Bild ist bei der Kniebeuge kaum dunkler geworden. Halt die Zehen direkt hinter dem Handy; ein helles Deckenlicht über dir hilft, ein helles Shirt vor heller Decke nicht.";
 "Hang from the bar with straight arms and stay still. After the countdown: one pull-up until your chin is over the bar, then hang all the way down again." = "Häng dich mit gestreckten Armen an die Stange und bleib ruhig. Nach dem Countdown: ein Klimmzug bis das Kinn über der Stange ist, dann wieder ganz aushängen.";
 "Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top." = "Geh in die Liegestützposition mit gestreckten Armen, Gesicht über dem Handy. Nach dem Countdown: ein Liegestütz, dann wieder oben bleiben.";
-"Stand over or right next to the phone and look towards the camera. After the countdown: one squat, then stand up straight again." = "Stell dich über bzw. direkt neben das Handy und schau Richtung Kamera. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.";
+"Toes just behind the phone, then keep still; you can look wherever you like. After the countdown: one squat, then stand up straight again." = "Zehen knapp hinter dem Handy, dann still halten; schauen kannst du, wohin du willst. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.";
 "Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds." = "Geh in die Plank-Position, Gesicht über dem Handy, und bleib ruhig. Nach dem Countdown die Position 3 Sekunden halten.";
-"No face detected. Check light and position: your face has to be above the camera. Tilt the phone slightly (30–45°)." = "Kein Gesicht erkannt. Prüfe Licht und Position: Das Gesicht muss über der Kamera sein. Kippe das Handy leicht an (30–45°).";
-"The movement was too weak in the signal. Get closer to the camera, tilt the phone more; for pull-ups put the phone directly under the bar." = "Die Bewegung war zu schwach im Signal. Näher an die Kamera, Handy stärker ankippen; bei Klimmzügen das Handy direkt unter die Stange legen.";
+"No person detected. Check light and position: your shoulders have to be above the camera and in the picture." = "Keine Person erkannt. Prüfe Licht und Position: Deine Schultern müssen über der Kamera und im Bild sein.";
 "The movement was detected but the start position was not reached again. Please start and end in the start position." = "Die Bewegung wurde erkannt, aber die Ausgangsposition nicht wieder erreicht. Bitte in der Ausgangsposition starten und dort wieder enden.";
 "The rep took %@ s. Plausible is %@–%@ s. Please repeat at a normal pace." = "Die Wiederholung dauerte %1$@ s. Plausibel sind %2$@–%3$@ s. Bitte in normalem Tempo wiederholen.";
 "The calibration could not be saved: %@" = "Kalibrierung konnte nicht gespeichert werden: %@";
@@ -102,13 +101,15 @@
 /* MARK: - Workout */
 "Workout" = "Workout";
 "Round %lld" = "Runde %lld";
-"Round %lld. %@" = "Runde %1$lld. %2$@";
 "REC" = "REC";
 "Up next: %@" = "Danach: %@";
 "Now do" = "Weiter mit";
 "Face" = "Gesicht";
 "No face" = "Kein Gesicht";
+"Person" = "Person";
+"No person" = "Keine Person";
 "Body Pose" = "Body Pose";
+"Brightness" = "Helligkeit";
 "Waiting for start position" = "Warte auf Ausgangsposition";
 "Hold" = "Halten";
 "Counting" = "Zählt";
@@ -122,9 +123,11 @@
 "Stop workout?" = "Workout abbrechen?";
 "Stop and show result" = "Abbrechen und Ergebnis anzeigen";
 "Keep going" = "Weitermachen";
+"Apply" = "Übernehmen";
+"Changes count from now on and finished rounds stay. Only calibrated exercises can be added." = "Gilt ab jetzt, geschaffte Runden bleiben. Hinzufügen lassen sich nur kalibrierte Übungen.";
+"Now: %@" = "Jetzt: %@";
 "Get ready" = "Bereit machen";
 "Starting with %@: hold still in the start position first" = "Start mit %@: erst ruhig in der Ausgangsposition bleiben";
-"Go" = "Los";
 "No complete calibration available." = "Keine vollständige Kalibrierung vorhanden.";
 "No access to the camera. Please allow it in Settings." = "Kein Zugriff auf die Kamera. Bitte in den Einstellungen erlauben.";
 "No front camera found." = "Keine Frontkamera gefunden.";
@@ -169,34 +172,24 @@
 "The workout could not be written to Apple Health." = "Das Workout konnte nicht in Apple Health geschrieben werden.";
 
 /* MARK: - Intro and exercise demos */
-"Start hanging with straight arms — that is the position calibration measures." = "Start im Hang mit gestreckten Armen — genau diese Position misst die Kalibrierung.";
+"Start hanging with straight arms." = "Start im Hang mit gestreckten Armen.";
 "Pull until your chin is above the bar, then lower all the way down again." = "Zieh dich hoch, bis das Kinn über der Stange ist, dann wieder ganz ablassen.";
 "Phone on the floor under the bar, screen facing up." = "Handy auf den Boden unter die Stange, Display nach oben.";
 "Start at the top with straight arms, face above the phone." = "Start oben mit gestreckten Armen, Gesicht über dem Handy.";
 "Lower until your chest is just off the floor, then press back up." = "Runter, bis die Brust knapp über dem Boden ist, dann wieder hochdrücken.";
-"Keep your body one straight line — sagging hips change the signal." = "Der Körper bleibt eine gerade Linie — ein durchhängendes Becken verändert das Signal.";
-"Stand over or right next to the phone and look towards the camera." = "Stell dich über oder direkt neben das Handy und schau Richtung Kamera.";
+"Keep your body one straight line from shoulders to heels." = "Halte den Körper von den Schultern bis zu den Fersen in einer geraden Linie.";
+"Toes just behind the phone." = "Zehen knapp hinter dem Handy.";
 "Squat until your hips are at least level with your knees, then stand up tall." = "Geh mindestens so tief, dass die Hüfte auf Kniehöhe ist, dann ganz aufrichten.";
-"Your face has to stay in frame the whole way down." = "Dein Gesicht muss auf dem ganzen Weg nach unten im Bild bleiben.";
 "Forearms on the floor, elbows under your shoulders, face above the phone." = "Unterarme auf dem Boden, Ellbogen unter den Schultern, Gesicht über dem Handy.";
-"Hold still — Cindy runs the clock as long as your face keeps the same distance." = "Ruhig halten — Cindy lässt die Uhr laufen, solange dein Gesicht den Abstand hält.";
+"Hold still — the clock runs as long as you hold the position." = "Ruhig halten — die Uhr läuft, solange du die Position hältst.";
 "Shoulders, hips and heels stay in one line." = "Schultern, Hüfte und Fersen bleiben auf einer Linie.";
 "Show me the movement" = "Bewegung ansehen";
 "Show the %@ movement" = "Bewegung für %@ ansehen";
 "Welcome to Cindy" = "Willkommen bei Cindy";
 "Cindy is a CrossFit benchmark workout: one round is %@. You repeat that round as often as you can in %lld minutes — that is what AMRAP means." = "Cindy ist ein CrossFit-Benchmark-Workout. Eine Runde: %1$@. Diese Runde wiederholst du in %2$lld Minuten so oft wie möglich — dafür steht AMRAP.";
 "Your score is rounds plus the reps of the round you did not finish. The plan is yours to change at any time." = "Dein Score sind die Runden plus die Wiederholungen der angefangenen Runde. Den Plan kannst du jederzeit anpassen.";
-"Cindy counts for you" = "Cindy zählt für dich";
-"Put the phone down and train. The front camera watches how large your face is in the picture — that changes with every rep, and Cindy turns it into a count." = "Handy hinlegen und trainieren. Die Frontkamera misst, wie groß dein Gesicht im Bild ist — das ändert sich mit jeder Wiederholung, und daraus zählt Cindy.";
 "Every frame is analyzed on the iPhone and discarded right away. No photos, no video, no internet connection." = "Jedes Bild wird direkt auf dem iPhone ausgewertet und sofort verworfen. Keine Fotos, kein Video, keine Internetverbindung.";
-"Where the phone goes" = "Wohin das Handy kommt";
-"Phone on the floor below you, screen facing up." = "Handy auf den Boden unter dich, Display nach oben.";
-"Better: tilt it 30–45°, for example against a weight plate. That improves the signal a lot." = "Besser: um 30–45° anwinkeln, zum Beispiel an eine Hantelscheibe gelehnt. Das verbessert das Signal deutlich.";
 "Train in the clothes you calibrated in, without a cap or hood." = "Trainiere in der Kleidung, in der du kalibriert hast, ohne Mütze oder Kapuze.";
-"Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen." = "Cindy piept bei jeder Wiederholung und sagt jede neue Runde und Übung an — du musst nie auf das Display schauen.";
-"This is what a rep looks like" = "So sieht eine Wiederholung aus";
-"Exercise" = "Übung";
-"Tap through the exercises. The phone in the drawing shows where it has to lie for Cindy to see your face." = "Tipp dich durch die Übungen. Das Handy in der Zeichnung zeigt, wo es liegen muss, damit Cindy dein Gesicht sieht.";
 "One calibration first" = "Zuerst einmal kalibrieren";
 "Everybody moves differently, so Cindy measures you once: one rep of each exercise, one after another. It takes about two minutes." = "Jeder bewegt sich anders, deshalb misst Cindy dich einmal aus: eine Wiederholung pro Übung, nacheinander. Das dauert etwa zwei Minuten.";
 "Repeat it when you change where the phone lies, or when counting starts to drift." = "Wiederhol das, wenn du das Handy anders hinlegst oder die Zählung ungenau wird.";
@@ -204,7 +197,7 @@
 "Skip" = "Überspringen";
 "Start calibration" = "Kalibrierung starten";
 "How Cindy works" = "Wie Cindy funktioniert";
-"The introduction from the first launch: how the counting works, where the phone goes and what each exercise looks like." = "Die Einführung vom ersten Start: wie gezählt wird, wohin das Handy kommt und wie jede Übung aussieht.";
+"The introduction from the first launch: where the phone goes, what each exercise looks like and why nothing leaves your iPhone." = "Die Einführung vom ersten Start: wohin das Handy kommt, wie jede Übung aussieht und warum nichts dein iPhone verlässt.";
 
 /* MARK: - Readiness */
 "Saved workouts are written to Health as cross-training sessions with one segment per round. Cindy also reads sleep, resting pulse, HRV and body weight — for the readiness estimate and the energy calculation, nothing else. With the switch off Cindy does not touch Health at all." = "Gespeicherte Workouts landen als Cross-Training in Health, mit einem Abschnitt pro Runde. Cindy liest außerdem Schlaf, Ruhepuls, HRV und Körpergewicht – für die Bereitschafts-Schätzung und die Energieberechnung, sonst nichts. Mit ausgeschaltetem Schalter rührt Cindy Health gar nicht an.";
@@ -250,3 +243,16 @@
 "Play movement" = "Bewegung abspielen";
 "Remove %@" = "%@ entfernen";
 "Share recording" = "Aufnahme teilen";
+"Put the phone down once" = "Handy einmal hinlegen";
+"It stays there for the whole workout. You never touch it or look at it again." = "Dort bleibt es das ganze Workout. Du musst es nicht mehr anfassen und nicht mehr draufschauen.";
+"Cindy beeps for every rep, with a higher tone when an exercise is done." = "Cindy piept bei jeder Wiederholung, mit einem höheren Ton, wenn eine Übung geschafft ist.";
+"Hang from the bar right above the phone." = "Häng an der Stange direkt über dem Handy.";
+"Phone just in front of your toes, where your face is at the bottom; look wherever you like." = "Das Handy liegt knapp vor deinen Zehen, dort, wo unten dein Gesicht ist; schau, wohin du willst.";
+"Look wherever you like." = "Schau, wohin du willst.";
+"No face detected. Check light and position: your face has to be right above the phone." = "Kein Gesicht erkannt. Prüfe Licht und Position: Dein Gesicht muss direkt über dem Handy sein.";
+"The movement was too weak in the signal. Keep your face right above the phone; for pull-ups put the phone directly under the bar." = "Die Bewegung war im Signal zu schwach. Halte dein Gesicht direkt über dem Handy; für Klimmzüge leg das Handy genau unter die Stange.";
+"With straight arms, your face is right above the phone." = "Mit gestreckten Armen ist dein Gesicht direkt über dem Handy.";
+"Forearms on either side of the phone, face right above it." = "Unterarme links und rechts vom Handy, Gesicht direkt darüber.";
+"Move up" = "Nach oben";
+"Move down" = "Nach unten";
+"Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.";

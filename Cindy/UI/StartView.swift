@@ -76,26 +76,30 @@ struct StartView: View {
                 .accessibilityLabel(L("Edit workout"))
             }
 
-            Button {
-                path.append(.calibration)
-            } label: {
-                secondaryLabel(model.isCalibrated ? L("Recalibrate") : L("Calibrate"),
-                               systemImage: "scope",
-                               note: calibrationNote,
-                               needsAttention: !model.isCalibrated)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            // Calibration always carries a note, History only once a workout exists;
+            // the two rows still read as a pair, so they share the taller height.
+            EqualHeightVStack(spacing: 12) {
+                Button {
+                    path.append(.calibration)
+                } label: {
+                    secondaryLabel(model.isCalibrated ? L("Recalibrate") : L("Calibrate"),
+                                   systemImage: "scope",
+                                   note: calibrationNote,
+                                   needsAttention: !model.isCalibrated)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
 
-            Button {
-                path.append(.history)
-            } label: {
-                secondaryLabel(L("History"),
-                               systemImage: "clock.arrow.circlepath",
-                               note: model.lastCompletedRecord.map { L("Last \($0.score.notation)") })
+                Button {
+                    path.append(.history)
+                } label: {
+                    secondaryLabel(L("History"),
+                                   systemImage: "clock.arrow.circlepath",
+                                   note: model.lastCompletedRecord.map { L("Last \($0.score.notation)") })
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
         }
     }
 
@@ -121,6 +125,8 @@ struct StartView: View {
             }
         }
         .padding(.vertical, 8)
+        // Fills the height `EqualHeightVStack` hands out, so the button background grows with it.
+        .frame(maxHeight: .infinity)
     }
 
     /// What still has to happen before a workout can start — or when the
@@ -133,5 +139,30 @@ struct StartView: View {
             return L("Missing: \(names)")
         }
         return profile.createdAt.formatted(date: .abbreviated, time: .shortened, in: Localization.locale)
+    }
+}
+
+/// A vertical stack that gives every child the height of the tallest one.
+private struct EqualHeightVStack: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else { return .zero }
+        let width = proposal.width
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
+        let rowHeight = sizes.map(\.height).max() ?? 0
+        let totalHeight = rowHeight * CGFloat(subviews.count) + spacing * CGFloat(subviews.count - 1)
+        return CGSize(width: width ?? sizes.map(\.width).max() ?? 0, height: totalHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+        let rowHeight = (bounds.height - spacing * CGFloat(subviews.count - 1)) / CGFloat(subviews.count)
+        var y = bounds.minY
+        for subview in subviews {
+            subview.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
+                          proposal: ProposedViewSize(width: bounds.width, height: rowHeight))
+            y += rowHeight + spacing
+        }
     }
 }

@@ -45,7 +45,7 @@ struct SettingsView: View {
                     Label(L("How Cindy works"), systemImage: "questionmark.circle")
                 }
             } footer: {
-                Text(L("The introduction from the first launch: how the counting works, where the phone goes and what each exercise looks like."))
+                Text(L("The introduction from the first launch: where the phone goes, what each exercise looks like and why nothing leaves your iPhone."))
             }
 
             if model.isHealthAvailable {

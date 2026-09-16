@@ -18,6 +18,10 @@ struct StickFigureDemoView: View {
                                               Self.phase(at: context.date, cycle: demo.cycle))
                 draw(demo.props, in: &ctx, scene: scene)
                 draw(pose, in: &ctx, scene: scene)
+                // The phone goes on top: under a plank's forearms or a squat's feet it would vanish.
+                for case .phone(let x) in demo.props {
+                    draw(phoneAt: x, in: &ctx, scene: scene)
+                }
             }
         }
         .aspectRatio(demo.aspectRatio, contentMode: .fit)
@@ -97,8 +101,8 @@ struct StickFigureDemoView: View {
                 line(at: y, from: 0, to: 1, width: 0.16, in: &ctx, scene: scene)
             case .bar(let y):
                 line(at: y, from: 0.12, to: 0.88, width: 0.32, in: &ctx, scene: scene)
-            case .phone(let at, let tilt):
-                draw(phoneAt: at, tilt: tilt, in: &ctx, scene: scene)
+            case .phone:
+                break // drawn over the figure, see `body`
             }
         }
     }
@@ -115,23 +119,20 @@ struct StickFigureDemoView: View {
                    style: StrokeStyle(lineWidth: scene.scale * demo.headRadius * width, lineCap: .round))
     }
 
-    /// The phone as a small tilted slab with a lit screen — it tells you where
-    /// to put it, which is half of what makes the counting work.
-    private func draw(phoneAt at: CGPoint, tilt: Double, in ctx: inout GraphicsContext, scene: Scene) {
+    /// The phone as a thin slab lying flat on the floor, its lit screen on top.
+    private func draw(phoneAt x: Double, in ctx: inout GraphicsContext, scene: Scene) {
         // A phone is about a head long — sizing it off the head
         // keeps it believable whatever scale the movement is drawn at.
-        let width = scene.scale * demo.headRadius * 2.0
-        let height = width * 0.4
-        let body = CGRect(x: -width / 2, y: -height / 2, width: width, height: height)
-        let screen = body.insetBy(dx: width * 0.06, dy: height * 0.16)
-        let center = scene(at)
-        let placement = CGAffineTransform(translationX: center.x, y: center.y)
-            .rotated(by: -tilt * .pi / 180)
-
-        ctx.fill(Path(roundedRect: body, cornerRadius: height * 0.3).applying(placement),
-                 with: .color(.secondary))
-        ctx.fill(Path(roundedRect: screen, cornerRadius: height * 0.2).applying(placement),
-                 with: .color(.brand.opacity(0.8)))
+        let unit = scene.scale * demo.headRadius
+        let width = unit * 2.2
+        let height = unit * 0.45
+        let floor = scene(CGPoint(x: x, y: demo.floorY))
+        // Resting on top of the floor line, whose stroke is 0.16 head radii thick.
+        let body = CGRect(x: floor.x - width / 2, y: floor.y - unit * 0.08 - height, width: width, height: height)
+        let screen = CGRect(x: body.minX + width * 0.06, y: body.minY, width: width * 0.88, height: height * 0.35)
+        // Opaque, unlike `.secondary`: it lies on top of the limbs, which must not show through.
+        ctx.fill(Path(roundedRect: body, cornerRadius: height * 0.35), with: .color(Color(.systemGray)))
+        ctx.fill(Path(roundedRect: screen, cornerRadius: height * 0.15), with: .color(.brand))
     }
 }
 

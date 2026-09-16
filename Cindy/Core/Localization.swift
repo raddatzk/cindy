@@ -4,7 +4,7 @@ import Foundation
 /// which may differ from the system language.
 ///
 /// Held globally because strings are needed outside the view tree too
-/// (speech output, error descriptions, progression advice). Written only from
+/// (error descriptions, progression advice). Written only from
 /// the main actor when the setting changes; reads elsewhere see either the old
 /// or the new bundle, never a torn value.
 enum Localization {
@@ -21,11 +21,6 @@ enum Localization {
         languageCode = code
         locale = language.locale
         bundle = Bundle.main.path(forResource: code, ofType: "lproj").flatMap(Bundle.init(path:)) ?? .main
-    }
-
-    /// BCP-47 tag for `AVSpeechSynthesisVoice`.
-    static var speechLanguage: String {
-        languageCode == "de" ? "de-DE" : "en-US"
     }
 
     /// The bundled language the system would pick on its own.

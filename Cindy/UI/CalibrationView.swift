@@ -29,8 +29,11 @@ struct CalibrationView: View {
         }
         .onAppear {
             if engine == nil {
+                // Only the gaps when a profile exists, e.g. squats after they moved to body pose.
+                let missing = model.calibration?.missingExercises(for: model.plan) ?? []
                 engine = CalibrationEngine(store: model.calibrationStore, existing: model.calibration,
-                                           config: model.config, exercises: model.plan.exercises)
+                                           config: model.config,
+                                           exercises: missing.isEmpty ? model.plan.exercises : missing)
             }
         }
         .onDisappear { engine?.cancel() }
@@ -84,7 +87,6 @@ private struct CalibrationFlowView: View {
             Text(L("How it works"))
                 .font(.title2.bold())
             bullet("iphone", L("Phone flat on the floor under the pull-up bar, screen facing up."))
-            bullet("angle", L("Recommended: tilt the phone slightly (30–45°), for example leaning against a weight plate. This improves the signal a lot."))
             bullet("tshirt", L("Calibrate in your workout clothes, without a cap or hood."))
             bullet("figure.strengthtraining.traditional", L("One rep of each, one after another: \(engine.exerciseList). Hold still in the start position before every countdown."))
             bullet("lock.shield", L("Everything stays on the device. No images are stored."))
@@ -109,7 +111,7 @@ private struct CalibrationFlowView: View {
                 .font(.body)
                 .multilineTextAlignment(.center)
             ExerciseDemoButton(exercise: exercise)
-            faceIndicator
+            subjectIndicator
             Spacer()
             Button {
                 engine.startExercise()
@@ -145,7 +147,7 @@ private struct CalibrationFlowView: View {
                 .font(.largeTitle.bold())
             ProgressView(value: engine.captureProgress)
                 .tint(.brand)
-            faceIndicator
+            subjectIndicator
             liveBar
             Spacer()
         }
@@ -261,10 +263,14 @@ private struct CalibrationFlowView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private var faceIndicator: some View {
-        Label(engine.faceDetected ? L("Face detected") : L("No face in frame"),
-              systemImage: engine.faceDetected ? "face.smiling" : "face.dashed")
-            .foregroundStyle(engine.faceDetected ? Color.green : Color.brand)
+    private var subjectIndicator: some View {
+        let detected = engine.subjectDetected
+        let isFace = engine.trackedSource == .face
+        return Label(isFace ? (detected ? L("Face detected") : L("No face in frame"))
+                            : (detected ? L("Person detected") : L("No person in frame")),
+                     systemImage: isFace ? (detected ? "face.smiling" : "face.dashed")
+                                         : (detected ? "figure.stand" : "person.fill.questionmark"))
+            .foregroundStyle(detected ? Color.green : Color.brand)
             .font(.subheadline)
     }
 
@@ -300,7 +306,7 @@ private struct CalibrationFlowView: View {
         case .pushUp:
             return L("Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top.")
         case .squat:
-            return L("Stand over or right next to the phone and look towards the camera. After the countdown: one squat, then stand up straight again.")
+            return L("Toes just behind the phone, then keep still; you can look wherever you like. After the countdown: one squat, then stand up straight again.")
         case .plank:
             return L("Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds.")
         }

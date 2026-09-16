@@ -4,13 +4,15 @@ import Foundation
 ///
 /// Columns are plain numbers only (no images). One row per camera frame:
 /// timestamp, exercise, source, raw & smoothed signal, confidence, face box,
-/// selected pose landmarks, detector event/phase, rep count and app state.
+/// selected pose landmarks, detector event/phase, rep count, app state and the
+/// thresholds the detector was comparing against, plus shoulder width and image brightness.
 final class FrameLogger {
     static let header = [
         "t", "exercise", "source", "raw", "smoothed", "confidence",
         "face_x", "face_y", "face_w", "face_h", "face_conf", "face_area", "orientation",
         "pose_nose_y", "pose_shoulder_y", "pose_hip_y", "pose_conf",
-        "event", "phase", "armed", "rep_count", "state"
+        "event", "phase", "armed", "rep_count", "state", "low", "high",
+        "pose_shoulder_w", "pose_shoulder_conf", "pose_orientation", "luma_mean", "luma_center"
     ].joined(separator: ",")
 
     let url: URL
@@ -101,6 +103,14 @@ final class FrameLogger {
         fields.append(output.map { $0.isArmed ? "1" : "0" } ?? "")
         fields.append(output.map { String($0.repCount) } ?? "")
         fields.append(state.replacingOccurrences(of: ",", with: ";"))
+        fields.append(format(output?.thresholds?.low))
+        fields.append(format(output?.thresholds?.high))
+        let shoulders = observation.pose?.shoulderWidthSample
+        fields.append(format(shoulders?.value))
+        fields.append(format(shoulders?.confidence))
+        fields.append(observation.poseOrientation.map { String($0.rawValue) } ?? "")
+        fields.append(format(observation.metrics?.lumaMean))
+        fields.append(format(observation.metrics?.lumaCenter))
         return fields.joined(separator: ",")
     }
 

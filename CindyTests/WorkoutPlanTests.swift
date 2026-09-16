@@ -67,6 +67,36 @@ struct WorkoutPlanTests {
         #expect(machine.score.totalReps == 19)
     }
 
+    @Test func targetsStayWithinTheCindyPrescription() {
+        var plan = WorkoutPlan.cindy
+        plan.setTarget(25, for: .pullUp)
+        plan.setTarget(0, for: .squat)
+        #expect(plan.target(for: .pullUp) == 5)
+        #expect(plan.target(for: .squat) == 1)
+        plan.setEnabled(.plank, true)
+        plan.setTarget(2, for: .plank)
+        #expect(plan.target(for: .plank) == 5)
+    }
+
+    @Test func oldPlansAreNormalizedToTheAllowedValues() {
+        var plan = WorkoutPlan.cindy
+        plan.durationMinutes = 12
+        plan.sets[0].target = 25 // saved before the limits existed
+        let normalized = plan.normalized()
+        #expect(normalized.durationMinutes == 10)
+        #expect(normalized.target(for: .pullUp) == 5)
+        plan.durationMinutes = 45
+        #expect(plan.normalized().durationMinutes == 20)
+    }
+
+    @Test func exercisesMoveOnePlaceAtATime() {
+        var plan = WorkoutPlan.cindy
+        plan.move(.squat, by: -1)
+        #expect(plan.exercises == [.pullUp, .squat, .pushUp])
+        plan.move(.pullUp, by: -1)
+        #expect(plan.exercises == [.pullUp, .squat, .pushUp])
+    }
+
     @Test func planRoundTripsThroughJSON() throws {
         var plan = WorkoutPlan.cindy
         plan.durationMinutes = 12

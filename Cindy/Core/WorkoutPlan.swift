@@ -24,6 +24,16 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
         ExerciseSet(exercise: .pushUp, target: 10),
         ExerciseSet(exercise: .squat, target: 15),
     ])
+    /// AMRAP lengths on offer: Cindy is 20 minutes, shorter ones are the way in, and the
+    /// progression advisor steps up by five.
+    static let durationChoices = [5, 10, 15, 20]
+
+    /// Allowed target per exercise: reps up to the Cindy prescription (more work comes from
+    /// more rounds, not bigger sets), plank seconds in steps of five.
+    static func targetRange(for exercise: Exercise) -> ClosedRange<Int> {
+        exercise.isHold ? 5...300 : 1...WorkoutPlan.cindy.target(for: exercise)
+    }
+
     /// Test plan for home use without a pull-up bar.
     static let withoutPullUps = WorkoutPlan(sets: [
         ExerciseSet(exercise: .pushUp, target: 10),
@@ -86,6 +96,28 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
 
     mutating func setTarget(_ target: Int, for exercise: Exercise) {
         guard let index = sets.firstIndex(where: { $0.exercise == exercise }) else { return }
-        sets[index].target = max(1, target)
+        let range = WorkoutPlan.targetRange(for: exercise)
+        sets[index].target = min(max(target, range.lowerBound), range.upperBound)
+    }
+
+    /// Moves an exercise one place up (-1) or down (+1) in the round.
+    mutating func move(_ exercise: Exercise, by offset: Int) {
+        guard let index = sets.firstIndex(where: { $0.exercise == exercise }) else { return }
+        let destination = index + offset
+        guard sets.indices.contains(destination) else { return }
+        sets.swapAt(index, destination)
+    }
+
+    /// The plan with durations and targets pulled into the allowed values, for plans saved
+    /// before those limits existed (e.g. 12 minutes or 25 pull-ups).
+    func normalized() -> WorkoutPlan {
+        var plan = self
+        plan.durationMinutes = WorkoutPlan.durationChoices.min {
+            abs($0 - durationMinutes) < abs($1 - durationMinutes)
+        } ?? 20
+        for set in sets {
+            plan.setTarget(set.exercise.isHold ? (set.target + 2) / 5 * 5 : set.target, for: set.exercise)
+        }
+        return plan
     }
 }

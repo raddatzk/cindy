@@ -15,7 +15,9 @@ final class WorkoutEngine {
     private(set) var elapsed: TimeInterval = 0
     private(set) var countdownValue = 0
     private(set) var isSignalArmed = false
-    private(set) var faceDetected = false
+    /// Whether the tracked subject (face or body, see `trackedSource`) is in the current frame.
+    private(set) var subjectDetected = false
+    private(set) var trackedSource: SignalSource = .face
     private(set) var liveValue: Float?
     private(set) var errorMessage: String?
     /// Set once the workout is finished or aborted.
@@ -31,7 +33,8 @@ final class WorkoutEngine {
     let camera: CameraSession
     private let processor: FrameProcessor
     private let machine: WorkoutStateMachine
-    let plan: WorkoutPlan
+    /// Can change during a pause, see `updatePlan(_:)`.
+    private(set) var plan: WorkoutPlan
     private let profile: CalibrationProfile
     private let config: SignalConfig
     private let audio: AudioFeedback
@@ -39,7 +42,6 @@ final class WorkoutEngine {
     private var timer: Timer?
     private var accumulated: TimeInterval = 0
     private var segmentStart: Date?
-    private var firedMarks: Set<Int> = []
     private var countdownTask: Task<Void, Never>?
     private var cameraRunning = false
     private var logger: FrameLogger?
@@ -68,6 +70,16 @@ final class WorkoutEngine {
 
     var logFileURL: URL? { logger?.url }
     var isLogging: Bool { logger != nil }
+
+    /// Exercises that can join the plan mid-workout: only calibrated ones can be counted.
+    var calibratedExercises: [Exercise] {
+        Exercise.allCases.filter { profile.calibration(for: $0) != nil }
+    }
+
+    /// Shortest AMRAP length the clock has not passed yet.
+    var shortestDurationAhead: Int {
+        WorkoutPlan.durationChoices.first { TimeInterval($0 * 60) > currentElapsed() } ?? plan.durationMinutes
+    }
 
     // MARK: - Lifecycle
 
@@ -118,7 +130,6 @@ final class WorkoutEngine {
         machine.pause()
         stopClock()
         processor.setPipeline(nil)
-        audio.speak(L("Pause"))
         sync()
     }
 
@@ -140,11 +151,24 @@ final class WorkoutEngine {
     func adjust(by delta: Int) {
         let before = machine.exercise
         let events = machine.adjust(by: delta)
-        apply(events, spoken: false)
+        apply(events)
         if machine.exercise != before, machine.phase != .paused {
             installPipeline(for: machine.exercise)
         }
         sync()
+    }
+
+    /// Takes over a plan changed on the pause screen. The clock and the rounds done so far
+    /// carry on; the new pipeline is installed on resume. Refused for exercises without a
+    /// calibration and for a duration the clock has already passed.
+    @discardableResult
+    func updatePlan(_ newPlan: WorkoutPlan) -> Bool {
+        guard machine.phase == .paused, newPlan.isValid, profile.isComplete(for: newPlan),
+              newPlan.duration > currentElapsed() else { return false }
+        apply(machine.replacePlan(newPlan))
+        plan = newPlan
+        sync()
+        return true
     }
 
     // MARK: - Private
@@ -152,10 +176,9 @@ final class WorkoutEngine {
     private func beginWorkout() {
         guard machine.phase == .countdown else { return } // aborted during the countdown
         let events = machine.start()
-        audio.speak(L("Go"))
-        apply(events, spoken: true)
+        audio.goSignal()
+        apply(events)
         accumulated = 0
-        firedMarks = []
         startClock()
         installPipeline(for: machine.exercise)
         sync()
@@ -166,13 +189,20 @@ final class WorkoutEngine {
         let pipeline = SignalPipeline(exercise: exercise, thresholds: calibration.thresholds,
                                       source: calibration.source, config: config,
                                       holdSeconds: exercise.isHold ? TimeInterval(plan.target(for: exercise)) : nil)
+        trackedSource = calibration.source
+        processor.setDetection(for: calibration.source)
         processor.setPipeline(pipeline)
         isSignalArmed = false
         heldSeconds = exercise.isHold ? 0 : nil
     }
 
+    /// A workout cannot count what it cannot see. Losing the camera pauses it
+    /// instead of silently dropping every rep until it comes back — a call, the
+    /// app going to the background or another app taking the camera all look
+    /// like a perfectly still athlete from here.
+    ///
     private func handle(observation: FrameObservation, output: PipelineOutput?) {
-        faceDetected = observation.face != nil
+        subjectDetected = CalibrationEngine.subjectDetected(in: observation, source: trackedSource)
         liveValue = output?.smoothed
         guard let output, machine.isRunning else { return }
         // Ignore stale frames from a pipeline that has already been replaced.
@@ -188,11 +218,11 @@ final class WorkoutEngine {
         switch output.event {
         case .armed:
             if machine.phase == .transition {
-                apply(machine.activate(), spoken: true)
+                apply(machine.activate())
             }
         case .repCompleted:
             let events = machine.registerRep()
-            apply(events, spoken: true)
+            apply(events)
             if machine.exercise != output.exercise {
                 installPipeline(for: machine.exercise)
             }
@@ -202,22 +232,22 @@ final class WorkoutEngine {
         sync()
     }
 
-    private func apply(_ events: [WorkoutEvent], spoken: Bool) {
+    private func apply(_ events: [WorkoutEvent]) {
+        // The rep that finishes an exercise sounds higher, so the change is audible
+        // with the phone on the floor.
+        let finishesExercise = events.contains {
+            if case .exerciseCompleted = $0 { return true }
+            return false
+        }
         for event in events {
             switch event {
             case .repCounted:
-                audio.beep()
-            case .roundCompleted(let round):
+                if finishesExercise { audio.goSignal() } else { audio.beep() }
+            case .roundCompleted:
                 roundTimestamps.append(currentElapsed())
-                if spoken { audio.speak(L("Round \(round). \(plan.first.displayName)")) }
             case .roundReopened:
                 if !roundTimestamps.isEmpty { roundTimestamps.removeLast() }
-            case .exerciseCompleted(_, let next):
-                // After a round the announcement above already names the first exercise.
-                if spoken, !plan.isFirst(next) { audio.speak(next.displayName) }
-            case .exerciseReopened(let exercise):
-                if spoken { audio.speak(exercise.displayName) }
-            case .started, .exerciseStarted, .repRemoved, .finished:
+            case .started, .exerciseStarted, .exerciseCompleted, .exerciseReopened, .repRemoved, .finished:
                 break
             }
         }
@@ -266,23 +296,9 @@ final class WorkoutEngine {
     private func tick() {
         guard let segmentStart else { return }
         elapsed = accumulated + Date().timeIntervalSince(segmentStart)
-        let remaining = self.remaining
-        for mark in config.announcementMarks {
-            let key = Int(mark)
-            if remaining <= mark, !firedMarks.contains(key), remaining > 0 {
-                firedMarks.insert(key)
-                audio.speak(WorkoutEngine.announcement(forRemaining: mark))
-            }
-        }
         if remaining <= 0 {
             finishWorkout(completed: true)
         }
-    }
-
-    nonisolated static func announcement(forRemaining seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        if minutes >= 1 { return L("\(minutes) minutes left") }
-        return L("\(Int(seconds)) seconds left")
     }
 
     private func finishWorkout(completed: Bool) {
@@ -292,12 +308,12 @@ final class WorkoutEngine {
         processor.setPipeline(nil)
         teardown()
         let score = machine.score
+        // A plan changed mid-workout is recorded as it stood at the end.
         result = WorkoutRecord(date: Date(), rounds: score.rounds, extraReps: score.reps,
                                durationSeconds: min(elapsed, plan.duration), completed: completed,
                                repsPerRound: plan.repsPerRound, roundTimestamps: roundTimestamps, plan: plan)
         if completed {
             audio.endSignal()
-            audio.speak(L("Time. \(score.rounds) rounds plus \(score.reps)"))
         }
         sync()
     }

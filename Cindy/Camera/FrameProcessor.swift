@@ -17,10 +17,11 @@ final class FrameProcessor {
     private var pipeline: SignalPipeline?
     private var logger: FrameLogger?
     private var stateProvider: (() -> String)?
+    private var measuresMetrics = false
 
-    init(camera: CameraSession, detectBodyPose: Bool = false) {
+    init(camera: CameraSession) {
         self.camera = camera
-        self.vision = VisionProcessor(detectBodyPose: detectBodyPose)
+        self.vision = VisionProcessor()
         camera.frameHandler = { [weak self] buffer in self?.handle(buffer) }
     }
 
@@ -36,12 +37,30 @@ final class FrameProcessor {
         }
     }
 
-    func setBodyPoseEnabled(_ enabled: Bool) {
-        camera.videoQueue.async { self.vision.detectBodyPose = enabled }
+    /// Chooses the Vision requests; each costs processing time per frame.
+    func setDetection(face: Bool, bodyPose: Bool) {
+        camera.videoQueue.async {
+            self.vision.detectFace = face
+            self.vision.detectBodyPose = bodyPose
+        }
+    }
+
+    /// Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`.
+    func setDetection(for source: SignalSource) {
+        setDetection(face: source != .pose, bodyPose: source != .face)
+        setMetricsEnabled(source == .brightness)
+    }
+
+    /// Measures the `FrameMetrics` (brightness) per frame.
+    func setMetricsEnabled(_ enabled: Bool) {
+        camera.videoQueue.async { self.measuresMetrics = enabled }
     }
 
     private func handle(_ buffer: CMSampleBuffer) {
-        guard let observation = vision.process(buffer) else { return }
+        guard var observation = vision.process(buffer) else { return }
+        if measuresMetrics {
+            observation.metrics = FrameMetricsCalculator.measure(buffer)
+        }
         let output = pipeline?.process(observation)
         logger?.log(observation: observation, output: output, state: stateProvider?() ?? "")
         onFrame?(observation, output)

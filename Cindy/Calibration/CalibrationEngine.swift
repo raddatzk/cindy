@@ -21,7 +21,9 @@ final class CalibrationEngine {
 
     private(set) var step: Step = .intro
     private(set) var liveValue: Float?
-    private(set) var faceDetected = false
+    /// Whether the tracked subject (face or body, see `trackedSource`) is in the current frame.
+    private(set) var subjectDetected = false
+    private(set) var trackedSource: SignalSource = .face
     private(set) var captureProgress: Double = 0
     private(set) var profile: CalibrationProfile
 
@@ -34,6 +36,8 @@ final class CalibrationEngine {
     private var exerciseIndex = 0
 
     private var trace: [CalibrationSample] = []
+    /// Frames with a face or pose during capture; brightness needs a body for `BodyEvidence`.
+    private var bodyFrames = 0
     private var captureStart: TimeInterval?
     private var countdownTask: Task<Void, Never>?
     private var timeoutTask: Task<Void, Never>?
@@ -91,7 +95,6 @@ final class CalibrationEngine {
         countdownTask?.cancel()
         countdownTask = Task { [weak self] in
             guard let self else { return }
-            self.audio.speak(exercise.singularName)
             for remaining in stride(from: self.config.calibrationCountdownSeconds, through: 1, by: -1) {
                 self.step = .countdown(exercise, remaining)
                 self.audio.beep()
@@ -129,12 +132,15 @@ final class CalibrationEngine {
     private func goToReady() {
         guard let exercise = currentExercise else { return }
         processor.setPipeline(nil)
+        trackedSource = config.source(for: exercise)
+        processor.setDetection(for: trackedSource)
         step = .ready(exercise)
         camera.relockExposure()
     }
 
     private func beginCapture(_ exercise: Exercise) {
         trace.removeAll(keepingCapacity: true)
+        bodyFrames = 0
         captureStart = nil
         captureProgress = 0
         // A fresh pipeline resets the EMA; its detector output is ignored here.
@@ -151,7 +157,7 @@ final class CalibrationEngine {
     }
 
     private func handle(observation: FrameObservation, output: PipelineOutput?) {
-        faceDetected = observation.face != nil
+        subjectDetected = Self.subjectDetected(in: observation, source: trackedSource)
         liveValue = output?.smoothed
         guard case .capturing(let exercise) = step, let output else { return }
         if captureStart == nil { captureStart = observation.timestamp }
@@ -161,14 +167,28 @@ final class CalibrationEngine {
         if let value = output.smoothed, output.confidence >= config.minConfidence {
             trace.append(CalibrationSample(timestamp: observation.timestamp, value: value))
         }
+        if observation.face != nil || observation.pose != nil { bodyFrames += 1 }
         let analyzer = CalibrationAnalyzer(config: config, source: output.source)
         if let calibration = exercise.isHold ? analyzer.evaluateHold(trace) : analyzer.evaluate(trace) {
             timeoutTask?.cancel()
             processor.setPipeline(nil)
+            if output.source == .brightness, bodyFrames == 0 {
+                step = .failed(exercise, .noPerson)
+                return
+            }
             audio.beep()
             step = .succeeded(exercise, calibration)
         } else if elapsed >= config.calibrationTimeout {
             fail(exercise)
+        }
+    }
+
+    /// Face for the face signal; otherwise any body (pose, or the face next to the brightness).
+    static func subjectDetected(in observation: FrameObservation, source: SignalSource) -> Bool {
+        switch source {
+        case .face: return observation.face != nil
+        case .pose: return observation.pose != nil
+        case .brightness: return observation.face != nil || observation.pose != nil
         }
     }
 
@@ -187,7 +207,7 @@ final class CalibrationEngine {
         do {
             try store.save(profile)
             step = .done
-            audio.speak(L("Calibration complete"))
+            audio.endSignal()
         } catch {
             step = .cameraError(L("The calibration could not be saved: \(error.localizedDescription)"))
         }

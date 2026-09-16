@@ -3,7 +3,15 @@ import SwiftUI
 /// Shows what one exercise looks like, picking whichever renderer can actually
 /// draw it: the bundled USDZ through RealityKit, otherwise the stick figure.
 struct ExerciseDemoView: View {
+    enum Renderer {
+        /// The 3D model when one is bundled, otherwise the stick figure.
+        case automatic
+        /// Always the stick figure: it also draws the floor, the bar and the phone.
+        case stickFigure
+    }
+
     let exercise: Exercise
+    var renderer: Renderer = .automatic
     /// Set while the view is off screen so the animation stops costing frames.
     var isPaused: Bool = false
     @State private var modelFailed = false
@@ -37,7 +45,7 @@ struct ExerciseDemoView: View {
     @ViewBuilder
     private func renderer(paused: Bool) -> some View {
         let demo = exercise.demo
-        if let url = Self.modelURL(for: demo), !modelFailed {
+        if renderer == .automatic, let url = Self.modelURL(for: demo), !modelFailed {
             RealityDemoView(url: url, perspective: demo.perspective, isPaused: paused) { modelFailed = true }
                 .aspectRatio(1, contentMode: .fit)
                 // A RealityView builds its scene once; a new URL alone leaves
@@ -62,13 +70,15 @@ struct ExerciseDemoView: View {
 /// The demo plus the form cues, as a sheet.
 struct ExerciseDemoSheet: View {
     let exercise: Exercise
+    var renderer: ExerciseDemoView.Renderer = .automatic
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    ExerciseDemoView(exercise: exercise)
+                    ExerciseDemoView(exercise: exercise, renderer: renderer)
+                        .padding(renderer == .stickFigure ? 16 : 0)
                         .frame(maxWidth: .infinity)
                         .frame(maxHeight: 320)
                         .background(Color.panelBackground, in: RoundedRectangle(cornerRadius: 16))
@@ -117,6 +127,7 @@ struct ExerciseDemoButton: View {
 
     let exercise: Exercise
     var style: Style = .prominent
+    var renderer: ExerciseDemoView.Renderer = .automatic
     @State private var showingDemo = false
 
     var body: some View {
@@ -127,13 +138,16 @@ struct ExerciseDemoButton: View {
             case .prominent:
                 Label(L("Show me the movement"), systemImage: "figure.strengthtraining.traditional")
             case .icon:
+                // Styled here, not on the button: the sheet would inherit a style set outside.
+                // `Color.secondary`, not `.secondary`: inside a button the latter is derived from the tint.
                 Image(systemName: "questionmark.circle")
+                    .foregroundStyle(Color.secondary)
             }
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(L("Show the \(exercise.singularName) movement"))
         .sheet(isPresented: $showingDemo) {
-            ExerciseDemoSheet(exercise: exercise)
+            ExerciseDemoSheet(exercise: exercise, renderer: renderer)
         }
     }
 }

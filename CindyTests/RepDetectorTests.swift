@@ -119,6 +119,76 @@ struct RepDetectorTests {
         #expect(run(inverted, thresholds: troughThresholds).reps == 5)
     }
 
+    // MARK: Relative thresholds
+
+    @Test func relativeThresholdsRescaleToMeasuredRest() {
+        let relative = RepThresholds(low: 0.0875, high: 0.1625, direction: .peak, baseline: 0.05)
+        // Twice as much face area as during calibration: rest 0.10, reps up to 0.40.
+        let samples = SyntheticSignal(rest: 0.10, peak: 0.40).reps(5)
+        let detector = RepDetector(thresholds: relative)
+        var reps = 0
+        for sample in samples {
+            if case .repCompleted = detector.process(value: sample.value, confidence: sample.confidence, timestamp: sample.t) {
+                reps += 1
+            }
+        }
+        #expect(reps == 5)
+        #expect(abs(detector.activeThresholds.low - 0.175) < 1e-4)
+        #expect(abs(detector.activeThresholds.high - 0.325) < 1e-4)
+        #expect(run(samples, thresholds: RepThresholds(low: 0.0875, high: 0.1625, direction: .peak)).reps == 0)
+    }
+
+    @Test func relativeThresholdsDoNotArmFarFromBaseline() {
+        // Standing right at the phone: seven times the calibrated rest area, perfectly still.
+        let detector = RepDetector(thresholds: RepThresholds(low: 0.0875, high: 0.1625, direction: .peak, baseline: 0.05))
+        for i in 0..<60 {
+            _ = detector.process(value: 0.35, confidence: 1, timestamp: Double(i) / 30)
+        }
+        #expect(detector.isArmed == false)
+    }
+
+    @Test func relativeTroughThresholdsRescale() {
+        let peakSamples = SyntheticSignal(rest: 0.05, peak: 0.20).reps(5)
+        // Pull-up style at 1.5× the calibrated area: rest 0.30, dips to 0.075.
+        let inverted = peakSamples.map { SyntheticSignal.Sample(t: $0.t, value: $0.value.map { (0.25 - $0) * 1.5 }, confidence: $0.confidence) }
+        let trough = RepThresholds(low: 0.0875, high: 0.1625, direction: .trough, baseline: 0.20)
+        #expect(run(inverted, thresholds: trough).reps == 5)
+    }
+
+    @Test func restTrackingRecoversFromArmingWhileWalkingAway() {
+        // Arms at about 1.55× the calibrated rest while still walking away, then settles at
+        // the calibrated rest: without tracking `high` (0.25) stays out of reach of the 0.20 peaks.
+        let relative = RepThresholds(low: 0.0875, high: 0.1625, direction: .peak, baseline: 0.05)
+        var samples: [SyntheticSignal.Sample] = []
+        var t: TimeInterval = 0
+        for i in 0..<60 {
+            let value = max(0.05, 0.08 - 0.0006 * Float(i))
+            samples.append(.init(t: t, value: value, confidence: 1))
+            t += 1 / 30
+        }
+        samples.append(contentsOf: SyntheticSignal(rest: 0.05, peak: 0.20).reps(5, leadIn: 2).map {
+            .init(t: t + $0.t, value: $0.value, confidence: $0.confidence)
+        })
+        #expect(run(samples, thresholds: relative).reps == 5)
+        var untracked = SignalConfig.default
+        untracked.restTrackingAlpha = 0
+        #expect(run(samples, thresholds: relative, config: untracked).reps == 0)
+    }
+
+    @Test func openCycleDisarmsRelativeThresholds() {
+        // Stepping closer and staying there: the cycle never closes, so the detector re-arms at the new rest.
+        let detector = RepDetector(thresholds: RepThresholds(low: 0.0875, high: 0.1625, direction: .peak, baseline: 0.05))
+        var events: [RepDetectorEvent] = []
+        var t: TimeInterval = 0
+        for value in Array(repeating: Float(0.05), count: 15) + Array(repeating: Float(0.09), count: 300) {
+            if let event = detector.process(value: value, confidence: 1, timestamp: t) { events.append(event) }
+            t += 1 / 30
+        }
+        #expect(events.filter { $0 == .armed }.count == 2)
+        #expect(events.contains(.disarmed))
+        #expect(abs(detector.activeThresholds.low - 0.0875 * 1.8) < 1e-3)
+    }
+
     @Test func lowConfidenceFramesAreIgnoredWhileArming() {
         let detector = RepDetector(thresholds: thresholds)
         for i in 0..<8 { _ = detector.process(value: 0.05, confidence: 1, timestamp: Double(i) / 30) }

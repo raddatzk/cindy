@@ -2,38 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>%lld minutes left</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%#@minutes@</string>
-		<key>minutes</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>Noch eine Minute</string>
-			<key>other</key>
-			<string>Noch %lld Minuten</string>
-		</dict>
-	</dict>
-	<key>%lld seconds left</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%#@seconds@</string>
-		<key>seconds</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>Noch eine Sekunde</string>
-			<key>other</key>
-			<string>Noch %lld Sekunden</string>
-		</dict>
-	</dict>
 	<key>%lld rounds + %lld reps · %lld total reps</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -102,22 +70,6 @@
 			<string>%lld Rep</string>
 			<key>other</key>
 			<string>%lld Reps</string>
-		</dict>
-	</dict>
-	<key>Time. %lld rounds plus %lld</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>Zeit. %1$#@rounds@ plus %2$lld</string>
-		<key>rounds</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>%lld Runde</string>
-			<key>other</key>
-			<string>%lld Runden</string>
 		</dict>
 	</dict>
 	<key>Full Cindy, pace steady. Target next time: %lld rounds.</key>

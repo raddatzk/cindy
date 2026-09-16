@@ -2,10 +2,13 @@ import Foundation
 
 /// Which measurement feeds the rep detector.
 enum SignalSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    /// Face bounding-box based signal (primary, clothing independent).
+    /// Face bounding-box based signal (push-ups, pull-ups, plank).
     case face
-    /// Body-pose landmark based signal (fallback; unreliable from below).
+    /// Body-pose landmark based signal.
     case pose
+    /// Mean image brightness (squats): the body covers more of the bright ceiling the lower
+    /// it gets, whichever way the athlete looks. Face and pose run alongside as a plausibility check.
+    case brightness
 
     var id: String { rawValue }
 
@@ -13,6 +16,7 @@ enum SignalSource: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .face: return L("Face")
         case .pose: return L("Body Pose")
+        case .brightness: return L("Brightness")
         }
     }
 }
@@ -30,10 +34,40 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// Margin used to derive the Schmitt-trigger thresholds from the calibrated
     /// extremes: low = min + margin·range, high = max − margin·range.
     var thresholdMargin: Float = 0.25
+    /// Relative thresholds only: the rest level measured when arming may differ from
+    /// the calibrated baseline by at most this factor (either way). Keeps the counter
+    /// from arming while the athlete stands right at the phone or holds the far position.
+    var restBaselineTolerance: Float = 2.5
+    /// Shifted thresholds (brightness) only: the rest level measured when arming may differ
+    /// from the calibrated baseline by at most this much (brightness 0…1).
+    var restShiftTolerance: Float = 0.1
+    /// Scaled thresholds only: while armed and at rest, the rest level follows lower
+    /// values with this EMA factor (never higher ones, those may be a rep starting).
+    /// Corrects a rest measured while the athlete was still walking away from the phone.
+    /// Brightness gains nothing from it in the recordings, so shifted thresholds do not track.
+    var restTrackingAlpha: Float = 0.03
+    /// Rest-anchored thresholds (brightness): a rep leaves rest after this fraction of the
+    /// calibrated swing and peaks after `restAnchoredPeak`.
+    var restAnchoredLeave: Float = 0.3
+    var restAnchoredPeak: Float = 0.7
+
+    /// Brightness reps only count when a body signal moved in the same cycle: the face area
+    /// grew by this factor, the shoulder width by `evidenceShoulderRatio`, or face or pose
+    /// vanished for `evidenceLostFrames` frames (looking ahead at the bottom of a squat).
+    var evidenceFaceAreaRatio: Float = 1.5
+    var evidenceShoulderRatio: Float = 1.3
+    var evidenceLostFrames: Int = 5
+    /// Pose frames below this shoulder confidence do not count as a seen body.
+    var evidencePoseMinConfidence: Float = 0.2
+
+    /// Median window applied to body-pose signals before the EMA (single-frame outliers).
+    var poseMedianWindow: Int = 5
 
     // MARK: Rep plausibility & debounce
 
     var minRepDuration: TimeInterval = 0.5
+    /// Longer cycles are rejected. With relative thresholds a cycle still open after this
+    /// long disarms the detector, so a changed standing position gets a fresh rest level.
     var maxRepDuration: TimeInterval = 5.0
     /// Consecutive confident frames in the rest band before the counter is armed.
     var stableFrames: Int = 10
@@ -52,10 +86,12 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// Same for pull-ups.
     var pullUpFaceYWeight: Float = 0
 
-    /// Signal source per exercise.
+    /// Signal source per exercise. Squats use the brightness: from the floor the face is only
+    /// found while the athlete looks down, and body pose drops out at the bottom of the squat
+    /// when looking ahead (CSV recordings 2026-09-14).
     var pullUpSource: SignalSource = .face
     var pushUpSource: SignalSource = .face
-    var squatSource: SignalSource = .face
+    var squatSource: SignalSource = .brightness
 
     // MARK: Calibration
 
@@ -69,6 +105,8 @@ struct SignalConfig: Codable, Equatable, Sendable {
     var calibrationMinRelativeExcursion: Float = 0.3
     /// Pose signals (normalised image coordinates) must swing by at least this much.
     var calibrationMinAbsoluteExcursion: Float = 0.05
+    /// Brightness (0…1) must dip by at least this much; the recorded squats dipped 0.03–0.09.
+    var calibrationMinBrightnessExcursion: Float = 0.015
     /// Seconds the athlete holds the plank during calibration.
     var calibrationHoldDuration: TimeInterval = 3
     /// Half-width of the plank band relative to the mean signal (± 25 %).
@@ -77,8 +115,6 @@ struct SignalConfig: Codable, Equatable, Sendable {
     // MARK: Workout
 
     var workoutCountdownSeconds: Int = 5
-    /// Remaining-time marks (seconds) that trigger a spoken announcement.
-    var announcementMarks: [TimeInterval] = [600, 300, 60]
 
     // MARK: Camera
 

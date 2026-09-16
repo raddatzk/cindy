@@ -32,7 +32,7 @@ final class AppModel {
     var theme: AppTheme {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: AppModel.themeKey) }
     }
-    /// UI and speech language; `.system` follows the device setting.
+    /// UI language; `.system` follows the device setting.
     var language: AppLanguage {
         didSet {
             UserDefaults.standard.set(language.rawValue, forKey: AppModel.languageKey)
@@ -92,7 +92,7 @@ final class AppModel {
     private static func loadPlan() -> WorkoutPlan {
         guard let data = UserDefaults.standard.data(forKey: planKey),
               let plan = try? JSONDecoder().decode(WorkoutPlan.self, from: data), plan.isValid else { return .cindy }
-        return plan
+        return plan.normalized()
     }
 
     private static func savePlan(_ plan: WorkoutPlan) {

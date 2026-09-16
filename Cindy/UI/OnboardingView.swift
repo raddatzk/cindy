@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The first-run introduction: what the workout is, how Cindy counts it, where
-/// to put the phone, what the exercises look like, and why calibration comes
-/// first. Reachable again from Settings, where the calibration hand-off is
-/// left out because the user is already somewhere on purpose.
+/// The first-run introduction: what the workout is, that the phone goes down once
+/// and nothing leaves it, what each exercise looks like around that phone, and why
+/// calibration comes first. Reachable again from Settings, where the calibration
+/// hand-off is left out because the user is already somewhere on purpose.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -12,21 +12,25 @@ struct OnboardingView: View {
     var onCalibrate: (() -> Void)?
 
     @State private var page = Page.welcome
-    @State private var demoExercise: Exercise?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Page: Int, CaseIterable {
-        case welcome, counting, setup, movements, calibration
+    private enum Page: Hashable {
+        case welcome, setup
+        case exercise(Exercise)
+        case calibration
+    }
+
+    /// One page per exercise of the current plan, between the setup and calibration.
+    private var pages: [Page] {
+        [.welcome, .setup] + model.plan.exercises.map(Page.exercise) + [.calibration]
     }
 
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $page) {
-                welcome.tag(Page.welcome)
-                counting.tag(Page.counting)
-                setup.tag(Page.setup)
-                movements.tag(Page.movements)
-                calibration.tag(Page.calibration)
+                ForEach(pages, id: \.self) { page in
+                    content(for: page).tag(page)
+                }
             }
             .tabViewStyle(.page)
             .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -34,7 +38,19 @@ struct OnboardingView: View {
             footer
         }
         .background(Color.screenBackground)
-        .onAppear { demoExercise = model.plan.first }
+        // Set here rather than inherited: the first-run cover sits outside the tinted
+        // navigation stack, the Settings sheet inside it, and both must look the same.
+        .tint(.brand)
+    }
+
+    @ViewBuilder
+    private func content(for page: Page) -> some View {
+        switch page {
+        case .welcome: welcome
+        case .setup: setup
+        case .exercise(let exercise): exercisePage(exercise)
+        case .calibration: calibration
+        }
     }
 
     // MARK: - Pages
@@ -46,42 +62,29 @@ struct OnboardingView: View {
         }
     }
 
-    private var counting: some View {
-        page(icon: nil, title: L("Cindy counts for you")) {
-            Text(L("Put the phone down and train. The front camera watches how large your face is in the picture — that changes with every rep, and Cindy turns it into a count."))
+    private var setup: some View {
+        page(icon: nil, title: L("Put the phone down once")) {
+            bullet("iphone.gen3", L("Phone flat on the floor under the pull-up bar, screen facing up."))
+            bullet("hand.raised", L("It stays there for the whole workout. You never touch it or look at it again."))
+            bullet("speaker.wave.2", L("Cindy beeps for every rep, with a higher tone when an exercise is done."))
             Label(L("Every frame is analyzed on the iPhone and discarded right away. No photos, no video, no internet connection."), systemImage: "lock.shield")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } illustration: {
-            PulsingFaceIcon()
+            CountingPhoneIcon()
         }
     }
 
-    private var setup: some View {
-        page(icon: "iphone.gen3", title: L("Where the phone goes")) {
-            bullet("arrow.down.to.line", L("Phone on the floor below you, screen facing up."))
-            bullet("angle", L("Better: tilt it 30–45°, for example against a weight plate. That improves the signal a lot."))
-            bullet("tshirt", L("Train in the clothes you calibrated in, without a cap or hood."))
-            bullet("speaker.wave.2", L("Cindy beeps for every rep and calls out each new round and exercise, so you never have to look at the screen."))
-        }
-    }
-
-    private var movements: some View {
-        page(icon: nil, title: L("This is what a rep looks like")) {
-            Picker(L("Exercise"), selection: $demoExercise) {
-                ForEach(model.plan.exercises) { exercise in
-                    Text(exercise.displayName).tag(Exercise?.some(exercise))
-                }
-            }
-            .pickerStyle(.segmented)
-            Text(L("Tap through the exercises. The phone in the drawing shows where it has to lie for Cindy to see your face."))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    private func exercisePage(_ exercise: Exercise) -> some View {
+        let demo = exercise.demo
+        return page(icon: nil, title: exercise.displayName) {
+            bullet("iphone.gen3", demo.placement)
+            bullet("figure.strengthtraining.functional", demo.keyCue)
         } illustration: {
-            if let demoExercise {
-                ExerciseDemoView(exercise: demoExercise, isPaused: page != .movements)
-                    .frame(maxHeight: 220)
-            }
+            // The stick figure, not the 3D model: it draws the floor, the bar and the phone,
+            // so every exercise shows the same phone in the same spot.
+            StickFigureDemoView(demo: demo, isPaused: page != .exercise(exercise) || reduceMotion)
+                .frame(maxHeight: 220)
         }
     }
 
@@ -89,6 +92,7 @@ struct OnboardingView: View {
         page(icon: "scope", title: L("One calibration first")) {
             Text(L("Everybody moves differently, so Cindy measures you once: one rep of each exercise, one after another. It takes about two minutes."))
             Text(L("Repeat it when you change where the phone lies, or when counting starts to drift."))
+            bullet("tshirt", L("Train in the clothes you calibrated in, without a cap or hood."))
         }
     }
 
@@ -122,7 +126,8 @@ struct OnboardingView: View {
 
     private func advance() {
         guard page == .calibration else {
-            withAnimation(reduceMotion ? nil : .default) { page = Page(rawValue: page.rawValue + 1) ?? .calibration }
+            let next = pages.firstIndex(of: page).map { pages.index(after: $0) } ?? pages.endIndex
+            withAnimation(reduceMotion ? nil : .default) { page = next < pages.endIndex ? pages[next] : .calibration }
             return
         }
         let calibrate = onCalibrate
@@ -181,25 +186,25 @@ struct OnboardingView: View {
     }
 }
 
-/// A face that drifts closer and further away — the signal Cindy actually
-/// measures, as a picture.
-private struct PulsingFaceIcon: View {
-    /// Held still with Reduce Motion: this one is an illustration, not a demo
-    /// anyone needs to see move.
+/// A phone lying on the floor that keeps counting — Cindy's job, as a picture.
+private struct CountingPhoneIcon: View {
+    /// Held on one number with Reduce Motion: an illustration, not a demo anyone needs to see move.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let interval = 0.9
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
-            let phase = StickFigureDemoView.phase(at: context.date, cycle: 2.4)
+        TimelineView(.animation(minimumInterval: interval / 3, paused: reduceMotion)) { context in
+            let count = reduceMotion ? 7 : Int(context.date.timeIntervalSinceReferenceDate / interval) % 15 + 1
             ZStack {
                 Image(systemName: "iphone.gen3")
                     .font(.system(size: 96))
                     .foregroundStyle(.secondary)
-                Image(systemName: "face.smiling.inverse")
-                    .font(.system(size: 40))
+                Text(verbatim: "\(count)")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .monospacedDigit()
                     .foregroundStyle(.brand)
-                    .scaleEffect(0.7 + 0.5 * phase)
-                    .offset(y: -8 - 40 * (1 - phase))
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : .snappy, value: count)
             }
         }
         .frame(height: 170)

@@ -125,17 +125,79 @@ struct WorkoutStateMachineTests {
         #expect(machine.score == WorkoutScore(rounds: 0, reps: 1))
     }
 
-    @Test func announcementsUseTheSelectedLanguage() {
-        Localization.apply(.english)
-        #expect(WorkoutEngine.announcement(forRemaining: 600) == "10 minutes left")
-        #expect(WorkoutEngine.announcement(forRemaining: 60) == "one minute left")
-        #expect(WorkoutEngine.announcement(forRemaining: 30) == "30 seconds left")
+    // MARK: - Changing the plan mid-workout
 
-        Localization.apply(.german)
-        #expect(WorkoutEngine.announcement(forRemaining: 600) == "Noch 10 Minuten")
-        #expect(WorkoutEngine.announcement(forRemaining: 60) == "Noch eine Minute")
-        #expect(WorkoutEngine.announcement(forRemaining: 30) == "Noch 30 Sekunden")
+    /// Pull-ups done, `pushUps` push-ups counted.
+    private func machineInPushUps(_ pushUps: Int) -> WorkoutStateMachine {
+        let machine = runningMachine()
+        for _ in 0..<5 { machine.registerRep() }
+        machine.activate()
+        for _ in 0..<pushUps { machine.registerRep() }
+        return machine
+    }
 
-        Localization.apply(.system)
+    @Test func changedTargetKeepsTheRepsOfTheCurrentExercise() {
+        let machine = machineInPushUps(4)
+        var plan = WorkoutPlan.cindy
+        plan.setTarget(8, for: .pushUp)
+        #expect(machine.replacePlan(plan).isEmpty)
+        #expect(machine.exercise == .pushUp)
+        #expect(machine.repCount == 4)
+        #expect(machine.phase == .active)
+        #expect(machine.score == WorkoutScore(rounds: 0, reps: 9, repsPerRound: 28))
+    }
+
+    @Test func targetBelowTheRepsDoneFinishesTheExercise() {
+        let machine = machineInPushUps(7)
+        machine.pause()
+        var plan = WorkoutPlan.cindy
+        plan.setTarget(5, for: .pushUp)
+        #expect(machine.replacePlan(plan) == [.exerciseCompleted(.pushUp, next: .squat)])
+        #expect(machine.exercise == .squat)
+        #expect(machine.repCount == 0)
+        #expect(machine.phase == .paused)
+    }
+
+    @Test func removingTheCurrentExerciseMovesOnToTheNextOne() {
+        let machine = machineInPushUps(3)
+        var plan = WorkoutPlan.cindy
+        plan.setEnabled(.pushUp, false)
+        #expect(machine.replacePlan(plan).isEmpty)
+        #expect(machine.exercise == .squat)
+        #expect(machine.repCount == 0)
+        #expect(machine.phase == .transition)
+        #expect(machine.score == WorkoutScore(rounds: 0, reps: 5, repsPerRound: 20))
+    }
+
+    @Test func removingTheRestOfTheRoundCompletesIt() {
+        let machine = machineInPushUps(10)
+        machine.activate()
+        for _ in 0..<3 { machine.registerRep() }
+        var plan = WorkoutPlan.cindy
+        plan.setEnabled(.squat, false)
+        #expect(machine.replacePlan(plan) == [.roundCompleted(1)])
+        #expect(machine.exercise == .pullUp)
+        #expect(machine.currentRound == 2)
+        #expect(machine.score == WorkoutScore(rounds: 1, reps: 0, repsPerRound: 15))
+    }
+
+    @Test func addedExerciseJoinsTheCurrentRound() {
+        let machine = machineInPushUps(10)
+        var plan = WorkoutPlan.cindy
+        plan.setEnabled(.plank, true)
+        machine.replacePlan(plan)
+        machine.activate()
+        let events = (0..<15).flatMap { _ in machine.registerRep() }
+        #expect(!events.contains(.roundCompleted(1)))
+        #expect(machine.exercise == .plank)
+        machine.activate()
+        #expect(machine.registerRep().contains(.roundCompleted(1)))
+    }
+
+    @Test func finishedWorkoutKeepsItsPlan() {
+        let machine = runningMachine()
+        machine.finish()
+        #expect(machine.replacePlan(.withoutPullUps).isEmpty)
+        #expect(machine.plan == .cindy)
     }
 }

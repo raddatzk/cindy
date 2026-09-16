@@ -197,4 +197,5 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
                        from connection: AVCaptureConnection) {
         frameHandler?(sampleBuffer)
     }
+
 }

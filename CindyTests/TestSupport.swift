@@ -50,16 +50,25 @@ struct SyntheticSignal {
     }
 }
 
-/// Parses CSV files written by `FrameLogger` (columns t, raw, confidence).
+extension Array where Element == SyntheticSignal.Sample {
+    /// Multiplies every value, e.g. to simulate standing closer to the phone.
+    func scaled(by factor: Float) -> [SyntheticSignal.Sample] {
+        map { SyntheticSignal.Sample(t: $0.t, value: $0.value.map { $0 * factor }, confidence: $0.confidence) }
+    }
+}
+
+/// Parses CSV files written by `FrameLogger` (columns t, raw, confidence by default).
 enum CSVSignalReplay {
-    static func load(_ url: URL) throws -> [SyntheticSignal.Sample] {
+    /// `column` / `confidenceColumn` pick another signal, e.g. `pose_shoulder_w` / `pose_conf`.
+    static func load(_ url: URL, column: String = "raw", confidenceColumn: String = "confidence") throws
+        -> [SyntheticSignal.Sample] {
         let text = try String(contentsOf: url, encoding: .utf8)
         var lines = text.split(separator: "\n").map(String.init)
         guard !lines.isEmpty else { return [] }
         let header = lines.removeFirst().split(separator: ",").map(String.init)
         guard let tIndex = header.firstIndex(of: "t"),
-              let rawIndex = header.firstIndex(of: "raw"),
-              let confIndex = header.firstIndex(of: "confidence") else { return [] }
+              let rawIndex = header.firstIndex(of: column),
+              let confIndex = header.firstIndex(of: confidenceColumn) else { return [] }
         return lines.map { line in
             let fields = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
             let t = Double(fields[tIndex]) ?? 0
@@ -69,10 +78,76 @@ enum CSVSignalReplay {
         }
     }
 
+    /// Rebuilds full frames (face box, shoulder width, brightness) so a replay also exercises
+    /// `BodyEvidence`. `lumaOffset` simulates a brighter or darker scene.
+    static func observations(_ url: URL, lumaOffset: Float = 0) throws -> [FrameObservation] {
+        let text = try String(contentsOf: url, encoding: .utf8)
+        var lines = text.split(separator: "\n").map(String.init)
+        guard !lines.isEmpty else { return [] }
+        let header = lines.removeFirst().split(separator: ",").map(String.init)
+        return lines.map { line in
+            let fields = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+            func value(_ name: String) -> Float? {
+                guard let index = header.firstIndex(of: name), index < fields.count else { return nil }
+                return Float(fields[index])
+            }
+            var observation = FrameObservation(timestamp: TimeInterval(value("t") ?? 0))
+            if let x = value("face_x"), let y = value("face_y"), let w = value("face_w"), let h = value("face_h") {
+                observation.face = FaceObservation(boundingBox: CGRect(x: CGFloat(x), y: CGFloat(y),
+                                                                       width: CGFloat(w), height: CGFloat(h)),
+                                                   confidence: value("face_conf") ?? 1)
+            }
+            if let width = value("pose_shoulder_w") {
+                let confidence = value("pose_shoulder_conf") ?? value("pose_conf") ?? 1
+                observation.pose = BodyPoseObservation(joints: [
+                    .leftShoulder: PosePoint(x: 0, y: 0, confidence: confidence),
+                    .rightShoulder: PosePoint(x: width, y: 0, confidence: confidence),
+                ])
+            }
+            if let luma = value("luma_mean") {
+                observation.metrics = FrameMetrics(lumaMean: luma + lumaOffset, lumaCenter: value("luma_center"))
+            }
+            return observation
+        }
+    }
+
+    /// Feeds frames between `from` and `to` through a calibration capture, like `CalibrationEngine`.
+    static func calibrate(_ frames: [FrameObservation], from: TimeInterval, to: TimeInterval, exercise: Exercise,
+                          source: SignalSource, config: SignalConfig = .default) -> ExerciseCalibration? {
+        let pipeline = SignalPipeline(exercise: exercise, thresholds: .hardcoded(for: exercise), source: source,
+                                      config: config)
+        let analyzer = CalibrationAnalyzer(config: config, source: source)
+        var trace: [CalibrationSample] = []
+        for frame in frames where frame.timestamp >= from && frame.timestamp <= to {
+            let output = pipeline.process(frame)
+            if let value = output.smoothed, output.confidence >= config.minConfidence {
+                trace.append(CalibrationSample(timestamp: frame.timestamp, value: value))
+            }
+            if let calibration = analyzer.evaluate(trace) { return calibration }
+        }
+        return nil
+    }
+
+    /// Counted and rejected reps of full frames through the pipeline.
+    static func countReps(_ frames: [FrameObservation], exercise: Exercise, thresholds: RepThresholds,
+                          source: SignalSource, config: SignalConfig = .default) -> (reps: [TimeInterval], rejected: Int) {
+        let pipeline = SignalPipeline(exercise: exercise, thresholds: thresholds, source: source, config: config)
+        var reps: [TimeInterval] = []
+        var rejected = 0
+        for frame in frames {
+            switch pipeline.process(frame).event {
+            case .repCompleted: reps.append(frame.timestamp)
+            case .repRejected: rejected += 1
+            default: break
+            }
+        }
+        return (reps, rejected)
+    }
+
     /// Runs the pipeline over the samples and returns the number of counted reps.
     static func countReps(_ samples: [SyntheticSignal.Sample], exercise: Exercise, thresholds: RepThresholds,
-                          config: SignalConfig = .default) -> Int {
-        let pipeline = SignalPipeline(exercise: exercise, thresholds: thresholds, source: .face, config: config)
+                          source: SignalSource = .face, config: SignalConfig = .default) -> Int {
+        let pipeline = SignalPipeline(exercise: exercise, thresholds: thresholds, source: source, config: config)
         var reps = 0
         for sample in samples {
             let output = pipeline.process(value: sample.value, confidence: sample.confidence, timestamp: sample.t)

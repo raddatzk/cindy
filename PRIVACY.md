@@ -4,7 +4,7 @@
 
 ## English
 
-**Last updated: September 14, 2026**
+**Last updated: September 15, 2026**
 
 The English and the German version say the same thing. Where they differ in a
 point of law, the German version applies.
@@ -107,8 +107,7 @@ app sends nothing on its own.
 
 ### 8. Sound
 
-Cindy counts audibly and speaks announcements through the system's speech
-output. It does **not access the microphone** and does not request microphone
+Cindy counts audibly with short beeps. It does **not access the microphone** and does not request microphone
 permission.
 
 ### 9. No tracking, no analytics, no advertising
@@ -167,7 +166,7 @@ when it was last updated.
 
 ## Deutsch
 
-**Stand: 14. September 2026**
+**Stand: 15. September 2026**
 
 ### 1. Verantwortlicher
 
@@ -275,8 +274,7 @@ Zählfehler zu melden. Die App verschickt nichts von allein.
 
 ### 8. Ton
 
-Cindy zählt hörbar mit und spricht Ansagen über die Sprachausgabe des
-Systems. Sie greift dafür **nicht auf das Mikrofon zu** und fordert auch keine
+Cindy zählt mit kurzen Pieptönen hörbar mit. Sie greift dafür **nicht auf das Mikrofon zu** und fordert auch keine
 Mikrofonberechtigung an.
 
 ### 9. Kein Tracking, keine Analyse, keine Werbung

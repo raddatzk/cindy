@@ -41,6 +41,8 @@ private struct WorkoutScreen: View {
     @Bindable var engine: WorkoutEngine
     @Binding var showPreview: Bool
     @Binding var confirmAbort: Bool
+    @State private var editingPlan = false
+    @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
@@ -72,13 +74,22 @@ private struct WorkoutScreen: View {
             Button(L("Stop and show result"), role: .destructive) { engine.abort() }
             Button(L("Keep going"), role: .cancel) {}
         }
-        // A rep only beeps, and the phone is on the floor. Everyone else can
-        // glance at the number; VoiceOver users get it spoken. Rounds and
-        // exercise changes are already announced by the engine for everyone.
+        .sheet(isPresented: $editingPlan) {
+            WorkoutPlanSheet(engine: engine) { plan in
+                // Kept for the next workout as well: it is what turned out to be doable.
+                if engine.updatePlan(plan) { model.plan = plan }
+            }
+        }
+        // Reps and exercise changes only beep, and the phone is on the floor.
+        // Everyone else can glance at the screen; VoiceOver users get them spoken.
         .onChange(of: engine.repCount) { previous, reps in
             guard voiceOverEnabled, reps > previous, !engine.exercise.isHold else { return }
             AccessibilityNotification.Announcement(
                 L("\(reps) of \(engine.plan.target(for: engine.exercise))")).post()
+        }
+        .onChange(of: engine.exercise) { _, exercise in
+            guard voiceOverEnabled, engine.phase != .finished else { return }
+            AccessibilityNotification.Announcement(L("Now: \(exercise.displayName)")).post()
         }
     }
 
@@ -201,10 +212,16 @@ private struct WorkoutScreen: View {
     private var statusLine: some View {
         HStack(spacing: 16) {
             Label {
-                Text(engine.faceDetected ? L("Face") : L("No face"))
+                if engine.trackedSource == .face {
+                    Text(engine.subjectDetected ? L("Face") : L("No face"))
+                } else {
+                    Text(engine.subjectDetected ? L("Person") : L("No person"))
+                }
             } icon: {
-                Image(systemName: engine.faceDetected ? "face.smiling" : "face.dashed")
-                    .foregroundStyle(engine.faceDetected ? Color.green : Color.brand)
+                Image(systemName: engine.trackedSource == .face
+                      ? (engine.subjectDetected ? "face.smiling" : "face.dashed")
+                      : (engine.subjectDetected ? "figure.stand" : "person.fill.questionmark"))
+                    .foregroundStyle(engine.subjectDetected ? Color.green : Color.brand)
             }
             Label {
                 Text(statusText)
@@ -299,6 +316,7 @@ private struct WorkoutScreen: View {
 
     /// A pause is when someone stops to wonder whether they are doing it
     /// right, so the pause screen answers that: the current exercise, moving.
+    /// It is also where the plan can be changed when it turns out too much.
     private var pauseOverlay: some View {
         ZStack {
             Color.screenBackground.opacity(0.97).ignoresSafeArea()
@@ -317,6 +335,15 @@ private struct WorkoutScreen: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                Button {
+                    editingPlan = true
+                } label: {
+                    Label(L("Edit workout"), systemImage: "slider.horizontal.3")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
                 HStack(spacing: 16) {
                     Button(role: .destructive) {
                         confirmAbort = true
@@ -358,5 +385,46 @@ private struct WorkoutScreen: View {
     static func format(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded(.up))
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
+/// The plan editor during a pause, for when the plan turns out to be too much (or too
+/// little) halfway through. Edits a copy and hands it over on "Apply".
+private struct WorkoutPlanSheet: View {
+    let engine: WorkoutEngine
+    let onApply: (WorkoutPlan) -> Void
+    @State private var draft: WorkoutPlan
+    @Environment(\.dismiss) private var dismiss
+
+    init(engine: WorkoutEngine, onApply: @escaping (WorkoutPlan) -> Void) {
+        self.engine = engine
+        self.onApply = onApply
+        _draft = State(initialValue: engine.plan)
+    }
+
+    var body: some View {
+        NavigationStack {
+            PlanEditorList(plan: $draft, addable: engine.calibratedExercises,
+                           minimumMinutes: engine.shortestDurationAhead) {
+                Section {
+                } footer: {
+                    Text(L("Changes count from now on and finished rounds stay. Only calibrated exercises can be added."))
+                }
+            }
+            .navigationTitle(L("Edit workout"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("Cancel")) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L("Apply")) {
+                        onApply(draft)
+                        dismiss()
+                    }
+                    .disabled(draft == engine.plan)
+                }
+            }
+        }
     }
 }

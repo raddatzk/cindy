@@ -12,8 +12,10 @@ struct ExerciseCalibration: Codable, Equatable, Sendable {
     var repDuration: TimeInterval
     var calibratedAt: Date
 
+    /// Relative to the calibrated baseline; `SignalPipeline` drops the baseline for
+    /// signals that do not scale with distance.
     var thresholds: RepThresholds {
-        RepThresholds(low: low, high: high, direction: direction)
+        RepThresholds(low: low, high: high, direction: direction, baseline: baseline)
     }
 
     var range: Float { maxValue - minValue }
@@ -45,23 +47,38 @@ struct CalibrationProfile: Codable, Equatable, Sendable {
     func missingExercises(for plan: WorkoutPlan) -> [Exercise] {
         plan.exercises.filter { exercises[$0.rawValue] == nil }
     }
+
+    /// Drops calibrations measured on a different signal source than the config uses now
+    /// (squats moved from the face to body pose); those exercises need a new calibration.
+    func removingOutdated(for config: SignalConfig) -> CalibrationProfile {
+        var profile = self
+        profile.exercises = exercises.filter { key, calibration in
+            guard let exercise = Exercise(rawValue: key) else { return false }
+            return calibration.source == config.source(for: exercise)
+        }
+        return profile
+    }
 }
 
 /// Loads and saves the calibration profile.
 final class CalibrationStore {
     private let store: JSONFileStore<CalibrationProfile>
+    private let config: SignalConfig
 
-    init(fileName: String = "calibration.json") {
+    init(fileName: String = "calibration.json", config: SignalConfig = .default) {
         store = JSONFileStore(fileName: fileName)
+        self.config = config
     }
 
-    init(url: URL) {
+    init(url: URL, config: SignalConfig = .default) {
         store = JSONFileStore(url: url)
+        self.config = config
     }
 
+    /// The stored profile without calibrations for a signal source the config no longer uses.
     func load() -> CalibrationProfile? {
         guard let profile = store.load(), profile.version == CalibrationProfile.currentVersion else { return nil }
-        return profile
+        return profile.removingOutdated(for: config)
     }
 
     func save(_ profile: CalibrationProfile) throws {

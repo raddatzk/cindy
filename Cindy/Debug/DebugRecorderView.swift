@@ -43,7 +43,7 @@ private struct DebugScreen: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     values
                 }
-                SignalSparkline(values: engine.history, thresholds: engine.thresholds)
+                SignalSparkline(values: engine.history, thresholds: engine.activeThresholds)
                     .frame(height: 140)
                 thresholdInfo
                 recording
@@ -85,6 +85,10 @@ private struct DebugScreen: View {
                 row("nose y", fmt(pose.noseY))
                 row("shoulder y", fmt(pose.shoulderY))
                 row("hip y", fmt(pose.hipY))
+                row("shoulder w", fmt(pose.shoulderWidth))
+            }
+            if let metrics = engine.latestObservation?.metrics {
+                row("luma", fmt(metrics.lumaMean))
             }
         }
         .font(.caption.monospaced())
@@ -93,11 +97,12 @@ private struct DebugScreen: View {
 
     private var thresholdInfo: some View {
         HStack {
-            Text(String(format: "low %.4f", engine.thresholds.low)).foregroundStyle(.blue)
-            Text(String(format: "high %.4f", engine.thresholds.high)).foregroundStyle(.red)
-            Text(engine.thresholds.direction == .peak ? "peak" : "trough")
+            let thresholds = engine.activeThresholds
+            Text(String(format: "low %.4f", thresholds.low)).foregroundStyle(.blue)
+            Text(String(format: "high %.4f", thresholds.high)).foregroundStyle(.red)
+            Text(thresholds.direction == .peak ? "peak" : "trough")
             Spacer()
-            Text(engine.usesCalibration ? "kalibriert" : "hartkodiert")
+            Text((engine.usesCalibration ? "kalibriert" : "hartkodiert") + (thresholds.isRelative ? ", relativ" : ""))
                 .foregroundStyle(.secondary)
         }
         .font(.caption.monospaced())
@@ -173,7 +178,8 @@ private struct DebugScreen: View {
 final class DebugEngine {
     var exercise: Exercise = .pushUp { didSet { rebuildPipeline() } }
     var source: SignalSource = .face { didSet { rebuildPipeline() } }
-    var bodyPose = false { didSet { processor.setBodyPoseEnabled(bodyPose) } }
+    /// Runs body pose next to the face even when the face is the signal (CSV comparisons).
+    var bodyPose = false { didSet { updateDetection() } }
 
     private(set) var latest: PipelineOutput?
     private(set) var latestObservation: FrameObservation?
@@ -197,6 +203,7 @@ final class DebugEngine {
         self.config = config
         self.camera = CameraSession(config: config)
         self.processor = FrameProcessor(camera: camera)
+        processor.setMetricsEnabled(true)
         processor.onFrame = { [weak self] observation, output in
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.handle(observation, output) }
@@ -210,6 +217,9 @@ final class DebugEngine {
     var thresholds: RepThresholds {
         profile?.calibration(for: exercise)?.thresholds ?? .hardcoded(for: exercise)
     }
+
+    /// What the running detector compares against (relative thresholds are rescaled once armed).
+    var activeThresholds: RepThresholds { latest?.thresholds ?? thresholds }
 
     func start() async {
         guard await CameraSession.requestAccess() else {
@@ -271,10 +281,16 @@ final class DebugEngine {
     // MARK: - Private
 
     private func rebuildPipeline() {
+        updateDetection()
         let pipeline = SignalPipeline(exercise: exercise, thresholds: thresholds, source: source, config: config)
         processor.setPipeline(pipeline)
         history.removeAll()
         repCount = 0
+    }
+
+    /// The face always runs in the debug mode, so its drop-outs stay visible in recordings.
+    private func updateDetection() {
+        processor.setDetection(face: true, bodyPose: bodyPose || source != .face)
     }
 
     private func handle(_ observation: FrameObservation, _ output: PipelineOutput?) {

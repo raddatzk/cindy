@@ -1,13 +1,12 @@
 import AVFoundation
 import Foundation
 
-/// Beeps and speech in the app language. Uses the `.playback` session category
-/// so feedback is audible even with the ring switch on silent, and mixes with music.
+/// Beeps. Uses the `.playback` session category so feedback is audible even
+/// with the ring switch on silent, and mixes with music.
 @MainActor
 final class AudioFeedback {
     static let shared = AudioFeedback()
 
-    private let synthesizer = AVSpeechSynthesizer()
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private var beepBuffer: AVAudioPCMBuffer?
@@ -44,12 +43,12 @@ final class AudioFeedback {
         play(beepBuffer)
     }
 
-    /// Single higher tone: "go".
+    /// Single higher tone: "go", and the last rep of an exercise.
     func goSignal() {
         play(highBeepBuffer)
     }
 
-    /// Three tones: workout finished.
+    /// Three tones: workout or calibration finished.
     func endSignal() {
         guard let highBeepBuffer else { return }
         for _ in 0..<3 {
@@ -57,18 +56,7 @@ final class AudioFeedback {
         }
     }
 
-    func speak(_ text: String) {
-        guard isEnabled else { return }
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: Localization.speechLanguage)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        utterance.volume = 1
-        synthesizer.stopSpeaking(at: .word)
-        synthesizer.speak(utterance)
-    }
-
     func stop() {
-        synthesizer.stopSpeaking(at: .immediate)
         player.stop()
     }
 

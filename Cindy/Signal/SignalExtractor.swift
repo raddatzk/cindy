@@ -24,7 +24,14 @@ struct SignalExtractor: Sendable {
         switch source {
         case .face: return faceSignal(observation, for: exercise)
         case .pose: return poseSignal(observation, for: exercise)
+        case .brightness: return brightnessSignal(observation)
         }
+    }
+
+    /// Mean image brightness; always confident when measured.
+    func brightnessSignal(_ observation: FrameObservation) -> SignalSample {
+        guard let luma = observation.metrics?.lumaMean else { return .missing(.brightness) }
+        return SignalSample(value: luma, confidence: 1, source: .brightness)
     }
 
     /// Face bounding-box area (plus an optional weighted centre-y term).
@@ -35,16 +42,27 @@ struct SignalExtractor: Sendable {
         return SignalSample(value: value, confidence: face.confidence, source: .face)
     }
 
-    /// Landmark height in the image: nose for push-ups, hips for squats, shoulders for pull-ups.
+    /// Body-pose signal: shoulder width for squats (the athlete comes closer to the floor
+    /// camera), landmark height otherwise (nose for push-ups, shoulders for pull-ups).
     func poseSignal(_ observation: FrameObservation, for exercise: Exercise) -> SignalSample {
         guard let pose = observation.pose else { return .missing(.pose) }
-        let result: (y: Float, confidence: Float)?
+        let result: (value: Float, confidence: Float)?
         switch exercise {
-        case .pushUp, .plank: result = pose.meanY(of: [.nose])
-        case .squat: result = pose.meanY(of: [.leftHip, .rightHip])
-        case .pullUp: result = pose.meanY(of: [.leftShoulder, .rightShoulder])
+        case .pushUp, .plank: result = pose.meanY(of: [.nose]).map { ($0.y, $0.confidence) }
+        case .squat: result = pose.shoulderWidthSample
+        case .pullUp: result = pose.meanY(of: [.leftShoulder, .rightShoulder]).map { ($0.y, $0.confidence) }
         }
         guard let result else { return .missing(.pose) }
-        return SignalSample(value: result.y, confidence: result.confidence, source: .pose)
+        return SignalSample(value: result.value, confidence: result.confidence, source: .pose)
+    }
+
+    /// How calibrated thresholds follow the rest level: sizes in the image scale with the
+    /// distance to the phone, brightness shifts. Image heights and a face-y mix stay absolute (nil).
+    func restAdaptation(for exercise: Exercise, source: SignalSource) -> RestAdaptation? {
+        switch source {
+        case .face: return config.faceYWeight(for: exercise) == 0 ? .scale : nil
+        case .pose: return exercise == .squat ? .scale : nil
+        case .brightness: return .shift
+        }
     }
 }

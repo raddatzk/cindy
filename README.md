@@ -3,7 +3,7 @@
 Native iOS rep counter for the CrossFit benchmark WOD **"Cindy"** (AMRAP 20 min:
 5 pull-ups, 10 push-ups, 15 air squats). The iPhone lies flat on the floor under
 the pull-up bar, front camera up, and counts reps and rounds from the face
-signal. Everything runs on device; no video is stored or transmitted.
+signal (squats: the image brightness, so the athlete can look wherever they like). Everything runs on device; no video is stored or transmitted.
 
 ## Build
 
@@ -27,20 +27,45 @@ xcodebuild -project Cindy.xcodeproj -scheme Cindy \
 
 ```
 Front camera (30 fps, exposure locked after 2 s)
-  → VisionProcessor      VNDetectFaceRectanglesRequest (primary), VNDetectHumanBodyPoseRequest (optional)
+  → VisionProcessor      VNDetectFaceRectanglesRequest and/or VNDetectHumanBodyPoseRequest, per exercise;
+                         each keeps its own orientation search (the phone lies flat)
+  → FrameMetrics         mean brightness of the frame (squats)
   → SignalExtractor      one Float per frame for the expected exercise (+ confidence)
+  → MedianFilter         5 frames, body pose only (single-frame outliers)
   → EMAFilter            alpha 0.3
-  → RepDetector          Schmitt trigger (low / high), rep duration 0.5–5 s, 10-frame arming debounce
+  → RepDetector          Schmitt trigger (low / high), rep duration 0.5–5 s, 10-frame arming debounce,
+                         thresholds relative to the rest level (scaled for sizes, shifted for brightness),
+                         BodyEvidence veto for brightness reps
   → WorkoutStateMachine  exercise, rep counter, round, transitions
   → WorkoutEngine        20-minute clock, audio feedback, UI state
 ```
 
-| Exercise | Primary signal (`.face`)        | Fallback (`.pose`)   | Rest position |
-|----------|---------------------------------|----------------------|---------------|
-| Push-up  | face bounding-box area          | nose y               | arms extended |
-| Squat    | face area (+ optional centre-y) | hip y                | standing      |
-| Pull-up  | face area (+ optional centre-y) | shoulder y           | dead hang     |
-| Plank    | face area held inside a band    | nose y               | plank         |
+| Exercise | Default source | `.face` signal                  | `.pose` signal       | `.brightness`    | Rest position |
+|----------|----------------|---------------------------------|----------------------|------------------|---------------|
+| Push-up  | `.face`        | face bounding-box area          | nose y               | mean luma        | arms extended |
+| Squat    | `.brightness`  | face area (+ optional centre-y) | shoulder width       | mean luma        | standing      |
+| Pull-up  | `.face`        | face area (+ optional centre-y) | shoulder y           | mean luma        | dead hang     |
+| Plank    | `.face`        | face area held inside a band    | nose y               | mean luma        | plank         |
+
+Squats count on the brightness since the device recordings of 2026-09-14
+(`CindyTests/Fixtures/recorded_squats_*`): from the floor the face is only found
+while the athlete looks down, and the body pose drops out at the bottom of every
+squat when looking ahead. The body darkens the picture the lower it gets, whichever
+way the athlete looks (18 of 18 squats in the two recordings with a still start).
+A squat overshoots past the rest brightness while standing up, so brightness
+thresholds hang off the rest level (leave at 30 %, peak at 70 % of the calibrated
+dip) instead of the cycle extremes. Face and pose keep running as `BodyEvidence`:
+a dip only counts if the face area grew, the shoulder width grew or face/pose
+vanished during the cycle, so a passing cloud does not count. Calibrations stored
+for a source the config no longer uses are dropped on load, so the app asks for
+just those exercises again.
+
+Calibrated thresholds carry the calibration baseline, and the detector measures the
+rest level when it arms. Face area and shoulder width are sizes in the image and
+scale with the distance to the phone: their thresholds are rescaled (within 2.5×),
+the rest follows lower values while at rest (walking away after arming). Brightness
+thresholds are shifted by the rest difference (within ±0.1). Either way a cycle that
+stays open longer than 5 s disarms, so a new standing position gets a fresh rest.
 
 All tunables live in `Cindy/Core/SignalConfig.swift` (EMA alpha, 25 % threshold
 margin, rep duration limits, arming frames, confidence, lost-timeout, per-exercise
@@ -58,6 +83,15 @@ The plan is persisted in UserDefaults; "Original Cindy" restores 5/10/15 in 20 m
 The plank is a hold: `HoldDetector` accumulates time while the smoothed face signal
 stays inside the calibrated band and pauses (without reset) when it leaves the
 band or the face is lost. A completed hold counts as one unit in the score.
+
+The pause screen opens the same editor on the running workout (`PlanEditorList`,
+`WorkoutEngine.updatePlan`). Only calibrated exercises can be added, and only
+durations the clock has not passed are offered. `WorkoutStateMachine.replacePlan`
+keeps the completed rounds and the reps of the current exercise; an exercise whose
+new target is already reached is done, a removed one hands over to the first
+exercise of the new plan not yet done this round (or completes the round). The
+changed plan is saved as the plan for the next workout too, and the record stores
+the plan as it stood at the end.
 
 ## Progression
 
@@ -208,7 +242,14 @@ Analyse a recording on the computer:
 ```bash
 python3 tools/analyze_csv.py path/to/recording.csv            # stats + detector simulation
 python3 tools/analyze_csv.py recording.csv --alpha 0.2 --margin 0.3 --plot
+python3 tools/analyze_csv.py recording.csv --column pose_shoulder_w --direction peak \
+  --low 0.34 --high 0.51 --baseline 0.25                      # another column, relative thresholds
 ```
+
+Besides the signal the rows carry the active `low`/`high`, the shoulder width and its
+confidence, the pose orientation and the image brightness (`luma_mean`, `luma_center`).
+The debug recorder always runs the face request, so its drop-outs stay visible
+next to a body-pose signal.
 
 Drop recordings into `CindyTests/Fixtures/` and add a case to
 `PipelineReplayTests` to turn them into regression tests
@@ -227,8 +268,8 @@ English explicitly resolves a real bundle instead of falling back. Plural forms
 string concatenation.
 
 Every user-facing string goes through `L("…")` (`Core/Localization.swift`) rather
-than `Text`'s implicit lookup, because speech output, error descriptions and
-progression advice are produced outside the view tree and must use the same
+than `Text`'s implicit lookup, because error descriptions and progression
+advice are produced outside the view tree and must use the same
 bundle. For the same reason dates, decimals, percentages and byte counts use the
 `Localization.locale` helpers — `Date.formatted(date:time:)` and
 `ByteCountFormatter` would silently fall back to the *system* locale.
@@ -248,19 +289,19 @@ which is a darker orange in light mode for contrast on white. The workout screen
 uses `.screenBackground` instead of the hardcoded black it had before, so its
 timer, countdown and error overlays stay legible in both schemes.
 
-`AudioFeedback` picks its speech voice from `Localization.speechLanguage`.
-
 ## Layout
 
 ```
 Cindy/
   App/           CindyApp, AppModel, RootView (navigation)
   Core/          Exercise, SignalConfig, Localization, AppLanguage, AppTheme, Theme (colors)
-  Signal/        FrameObservation, SignalExtractor, EMAFilter, RepDetector, RepThresholds, SignalPipeline
-  Camera/        CameraSession (AVFoundation), VisionProcessor (Vision), FrameProcessor (queue glue)
+  Signal/        FrameObservation, SignalExtractor, MedianFilter, EMAFilter, RepDetector, RepThresholds,
+                 BodyEvidence, SignalPipeline
+  Camera/        CameraSession (AVFoundation), VisionProcessor (Vision), FrameProcessor (queue glue),
+                 FrameMetricsCalculator (image brightness)
   Calibration/   CalibrationProfile (+ store), CalibrationAnalyzer (pure), CalibrationEngine
   Workout/       WorkoutStateMachine (pure), WorkoutEngine (camera + clock + audio)
-  Audio/         AudioFeedback (beeps via AVAudioEngine, speech in the app language)
+  Audio/         AudioFeedback (beeps via AVAudioEngine)
   Persistence/   JSONFileStore, HistoryStore
   Demo/          ExerciseDemo (poses + cues), StickFigureDemoView, RealityDemoView
   Debug/         FrameLogger (CSV), DebugRecorderView

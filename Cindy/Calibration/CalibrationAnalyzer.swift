@@ -7,10 +7,14 @@ struct CalibrationSample: Equatable, Sendable {
 }
 
 enum CalibrationFailure: Equatable, Sendable {
-    /// Not enough confident frames to even measure a baseline.
+    /// Not enough confident frames to even measure a baseline (face signal).
     case noFace
+    /// Same for the body-pose signal, or no body at all next to the brightness signal.
+    case noPerson
     /// The signal never swung far enough from the baseline.
     case tooWeak
+    /// The brightness barely changed: too little contrast between the athlete and the background.
+    case lowContrast
     /// The signal moved but did not come back to the start position.
     case noReturn
     /// A cycle was found but was too fast or too slow.
@@ -19,9 +23,13 @@ enum CalibrationFailure: Equatable, Sendable {
     var message: String {
         switch self {
         case .noFace:
-            return L("No face detected. Check light and position: your face has to be above the camera. Tilt the phone slightly (30–45°).")
+            return L("No face detected. Check light and position: your face has to be right above the phone.")
+        case .noPerson:
+            return L("No person detected. Check light and position: your shoulders have to be above the camera and in the picture.")
         case .tooWeak:
-            return L("The movement was too weak in the signal. Get closer to the camera, tilt the phone more; for pull-ups put the phone directly under the bar.")
+            return L("The movement was too weak in the signal. Keep your face right above the phone; for pull-ups put the phone directly under the bar.")
+        case .lowContrast:
+            return L("The picture hardly got darker during the squat. Keep your toes right behind the phone; a bright ceiling light above you helps, a bright top on a bright ceiling does not.")
         case .noReturn:
             return L("The movement was detected but the start position was not reached again. Please start and end in the start position.")
         case .implausibleDuration(let duration):
@@ -85,18 +93,20 @@ struct CalibrationAnalyzer: Sendable {
     }
 
     func diagnoseHold(_ trace: [CalibrationSample]) -> CalibrationFailure {
-        trace.count < config.calibrationBaselineMinSamples ? .noFace : .noReturn
+        trace.count < config.calibrationBaselineMinSamples ? noSubject : .noReturn
     }
 
     /// Best explanation for why `evaluate` has not succeeded (used on timeout).
     func diagnose(_ trace: [CalibrationSample]) -> CalibrationFailure {
-        guard let stats = stats(of: trace) else { return .noFace }
-        guard stats.excursionOK else { return .tooWeak }
+        guard let stats = stats(of: trace) else { return noSubject }
+        guard stats.excursionOK else { return source == .brightness ? .lowContrast : .tooWeak }
         guard let cycle = findCycle(trace, stats: stats) else { return .noReturn }
         return .implausibleDuration(cycle.duration)
     }
 
     // MARK: - Internals
+
+    private var noSubject: CalibrationFailure { source == .face ? .noFace : .noPerson }
 
     struct TraceStats {
         var baseline: Float
@@ -120,15 +130,27 @@ struct CalibrationAnalyzer: Sendable {
         let maxValue = values.max() ?? baseline
         let up = maxValue - baseline
         let down = baseline - minValue
-        let direction: RepDirection = up >= down ? .peak : .trough
-        let excursion = Swift.max(up, down)
         let required: Float
         switch source {
         case .face: required = Swift.max(config.calibrationMinRelativeExcursion * abs(baseline), 1e-4)
         case .pose: required = config.calibrationMinAbsoluteExcursion
+        case .brightness: required = config.calibrationMinBrightnessExcursion
         }
-        let thresholds = RepThresholds.from(min: minValue, max: maxValue, direction: direction,
+        let direction: RepDirection
+        let thresholds: RepThresholds
+        if source == .brightness {
+            // Brightness overshoots past rest when the athlete stands back up, so the side
+            // the signal left first is the rep, and the thresholds hang off the rest level.
+            direction = firstExcursion(of: values, from: baseline, reach: Swift.max(up, down) / 2) ?? .trough
+            thresholds = RepThresholds.fromRest(baseline: baseline, extreme: direction == .peak ? maxValue : minValue,
+                                                direction: direction, leave: config.restAnchoredLeave,
+                                                peak: config.restAnchoredPeak)
+        } else {
+            direction = up >= down ? .peak : .trough
+            thresholds = RepThresholds.from(min: minValue, max: maxValue, direction: direction,
                                             margin: config.thresholdMargin)
+        }
+        let excursion = direction == .peak ? up : down
         return TraceStats(
             baseline: baseline, min: minValue, max: maxValue, direction: direction,
             excursion: excursion, excursionOK: excursion >= required, thresholds: thresholds,
@@ -162,6 +184,12 @@ struct CalibrationAnalyzer: Sendable {
         let startIndex = (0..<extremeIndex).reversed().first(where: { inRest(values[$0]) }) ?? 0
         let duration = trace[endIndex].timestamp - trace[startIndex].timestamp
         return Cycle(startIndex: startIndex, extremeIndex: extremeIndex, endIndex: endIndex, duration: duration)
+    }
+
+    /// Direction of the first sample that moves `reach` away from the baseline.
+    private func firstExcursion(of values: [Float], from baseline: Float, reach: Float) -> RepDirection? {
+        guard reach > 0, let first = values.first(where: { abs($0 - baseline) >= reach }) else { return nil }
+        return first > baseline ? .peak : .trough
     }
 
     private func median(_ values: [Float]) -> Float {

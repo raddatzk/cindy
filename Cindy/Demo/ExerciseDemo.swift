@@ -46,9 +46,9 @@ enum StickPerspective {
 enum StickProp: Equatable {
     case floor(y: Double)
     case bar(y: Double)
-    /// The iPhone, lying where Cindy needs it to see your face.
-    /// `tilt` is in degrees, matching the 30–45° the calibration asks for.
-    case phone(at: CGPoint, tilt: Double)
+    /// The iPhone lying flat on the floor, screen up, directly under the face — the same
+    /// spot for every exercise, no stand or weight plate needed. Sits on the `floor` prop.
+    case phone(x: Double)
 }
 
 /// Everything needed to show one exercise: the movement itself, the scenery
@@ -65,6 +65,10 @@ struct ExerciseDemo {
     var props: [StickProp]
     /// Short form cues, most important first.
     var cues: [String]
+    /// Where the athlete is relative to the phone, which stays in one spot all workout.
+    var placement: String
+    /// The one cue that defines a full rep (or a good hold), for the intro.
+    var keyCue: String
     /// Base name of an optional animated USDZ in the bundle. When that file is
     /// present the RealityKit renderer takes over and the stick figure becomes
     /// the fallback; see `ExerciseDemoView`.
@@ -115,10 +119,12 @@ extension ExerciseDemo {
                            knee: CGPoint(x: 0.53, y: 0.61),
                            foot: CGPoint(x: 0.52, y: 0.80)),
             cycle: 2.6,
-            props: [.bar(y: 0.14), .floor(y: 1.12), .phone(at: CGPoint(x: 0.50, y: 1.09), tilt: 35)],
-            cues: [L("Start hanging with straight arms — that is the position calibration measures."),
+            props: [.bar(y: 0.14), .floor(y: 1.12), .phone(x: 0.50)],
+            cues: [L("Start hanging with straight arms."),
                    L("Pull until your chin is above the bar, then lower all the way down again."),
                    L("Phone on the floor under the bar, screen facing up.")],
+            placement: L("Hang from the bar right above the phone."),
+            keyCue: L("Pull until your chin is above the bar, then lower all the way down again."),
             modelName: "demo_pullup")
     }
 
@@ -135,7 +141,8 @@ extension ExerciseDemo {
                              hip: CGPoint(x: 0.72, y: 0.78),
                              knee: CGPoint(x: 1.00, y: 0.864),
                              foot: CGPoint(x: 1.28, y: 0.95)),
-            end: StickPose(head: CGPoint(x: 0.09, y: 0.855),
+            // Chest just off the floor, face still a gap above the phone lying under it.
+            end: StickPose(head: CGPoint(x: 0.13, y: 0.80),
                            neck: CGPoint(x: 0.26, y: 0.865),
                            shoulder: CGPoint(x: 0.22, y: 0.86),
                            elbow: CGPoint(x: 0.40, y: 0.92),
@@ -144,10 +151,12 @@ extension ExerciseDemo {
                            knee: CGPoint(x: 1.00, y: 0.926),
                            foot: CGPoint(x: 1.28, y: 0.95)),
             cycle: 2.2,
-            props: [.floor(y: 0.95), .phone(at: CGPoint(x: -0.08, y: 0.92), tilt: 35)],
+            props: [.floor(y: 0.95), .phone(x: 0.11)],
             cues: [L("Start at the top with straight arms, face above the phone."),
                    L("Lower until your chest is just off the floor, then press back up."),
-                   L("Keep your body one straight line — sagging hips change the signal.")],
+                   L("Keep your body one straight line from shoulders to heels.")],
+            placement: L("With straight arms, your face is right above the phone."),
+            keyCue: L("Lower until your chest is just off the floor, then press back up."),
             modelName: "demo_pushup")
     }
 
@@ -163,19 +172,23 @@ extension ExerciseDemo {
                              hip: CGPoint(x: 0.49, y: 0.52),
                              knee: CGPoint(x: 0.49, y: 0.81),
                              foot: CGPoint(x: 0.47, y: 1.10)),
-            end: StickPose(head: CGPoint(x: 0.49, y: 0.47),
-                           neck: CGPoint(x: 0.46, y: 0.57),
-                           shoulder: CGPoint(x: 0.47, y: 0.60),
-                           elbow: CGPoint(x: 0.67, y: 0.65),
-                           hand: CGPoint(x: 0.84, y: 0.72),
+            // Torso leans forward at the bottom, bringing the face over the phone in front of the toes.
+            end: StickPose(head: CGPoint(x: 0.60, y: 0.50),
+                           neck: CGPoint(x: 0.55, y: 0.59),
+                           shoulder: CGPoint(x: 0.55, y: 0.63),
+                           elbow: CGPoint(x: 0.74, y: 0.68),
+                           hand: CGPoint(x: 0.90, y: 0.74),
                            hip: CGPoint(x: 0.35, y: 0.87),
                            knee: CGPoint(x: 0.64, y: 0.86),
                            foot: CGPoint(x: 0.47, y: 1.10)),
             cycle: 2.4,
-            props: [.floor(y: 1.10), .phone(at: CGPoint(x: 0.12, y: 1.07), tilt: 40)],
-            cues: [L("Stand over or right next to the phone and look towards the camera."),
+            // In front of the toes, where the face goes at the bottom — not between the legs.
+            props: [.floor(y: 1.10), .phone(x: 0.63)],
+            cues: [L("Toes just behind the phone."),
                    L("Squat until your hips are at least level with your knees, then stand up tall."),
-                   L("Your face has to stay in frame the whole way down.")],
+                   L("Look wherever you like.")],
+            placement: L("Phone just in front of your toes, where your face is at the bottom; look wherever you like."),
+            keyCue: L("Squat until your hips are at least level with your knees, then stand up tall."),
             modelName: "demo_squat")
     }
 
@@ -200,10 +213,12 @@ extension ExerciseDemo {
             start: held,
             end: breathing,
             cycle: 4.0,
-            props: [.floor(y: 0.95), .phone(at: CGPoint(x: 0.00, y: 0.92), tilt: 35)],
+            props: [.floor(y: 0.95), .phone(x: 0.20)],
             cues: [L("Forearms on the floor, elbows under your shoulders, face above the phone."),
-                   L("Hold still — Cindy runs the clock as long as your face keeps the same distance."),
+                   L("Hold still — the clock runs as long as you hold the position."),
                    L("Shoulders, hips and heels stay in one line.")],
+            placement: L("Forearms on either side of the phone, face right above it."),
+            keyCue: L("Shoulders, hips and heels stay in one line."),
             modelName: "demo_plank")
     }
 }
@@ -248,6 +263,12 @@ extension ExerciseDemo {
     /// push-up is wide and flat, and a fixed square would draw it tiny inside a
     /// lot of empty space. The floor and the bar only contribute their height —
     /// they are stretched to whatever the final width turns out to be.
+    /// Height of the floor the phone lies on.
+    var floorY: Double {
+        for case .floor(let y) in props { return y }
+        return 1
+    }
+
     var bounds: CGRect {
         var minX = Double.infinity, minY = Double.infinity
         var maxX = -Double.infinity, maxY = -Double.infinity
@@ -266,8 +287,8 @@ extension ExerciseDemo {
             switch prop {
             case .floor(let y), .bar(let y):
                 minY = min(minY, y); maxY = max(maxY, y)
-            case .phone(let at, _):
-                include(at, pad: headRadius)
+            case .phone(let x):
+                include(CGPoint(x: x, y: floorY), pad: headRadius * 1.1)
             }
         }
         let pad = headRadius * 0.5

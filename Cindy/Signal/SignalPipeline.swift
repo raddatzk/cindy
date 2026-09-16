@@ -14,9 +14,12 @@ struct PipelineOutput: Equatable, Sendable {
     var repCount: Int
     /// Accumulated hold time (plank only).
     var heldSeconds: TimeInterval? = nil
+    /// Thresholds the detector currently compares against (rescaled once armed if relative).
+    var thresholds: RepThresholds? = nil
 }
 
-/// Extractor → EMA smoothing → Schmitt-trigger rep detector for one exercise.
+/// Extractor → (median for pose) → EMA smoothing → Schmitt-trigger rep detector for one exercise;
+/// brightness reps additionally need `BodyEvidence`.
 /// Not thread-safe; call `process` from a single queue.
 final class SignalPipeline {
     let exercise: Exercise
@@ -26,18 +29,29 @@ final class SignalPipeline {
 
     private let extractor: SignalExtractor
     private var ema: EMAFilter
+    private var median: MedianFilter?
     private let detector: RepDetector?
     private let holdDetector: HoldDetector?
+    private var evidence: BodyEvidence?
 
     /// `holdSeconds` switches the pipeline to the time-based hold detector (plank).
     init(exercise: Exercise, thresholds: RepThresholds, source: SignalSource? = nil, config: SignalConfig = .default,
          holdSeconds: TimeInterval? = nil) {
+        let source = source ?? config.source(for: exercise)
+        let extractor = SignalExtractor(config: config)
+        var thresholds = thresholds
+        if let adaptation = extractor.restAdaptation(for: exercise, source: source) {
+            thresholds.adaptation = adaptation
+        } else {
+            thresholds.baseline = nil
+        }
         self.exercise = exercise
         self.thresholds = thresholds
         self.config = config
-        self.source = source ?? config.source(for: exercise)
-        self.extractor = SignalExtractor(config: config)
+        self.source = source
+        self.extractor = extractor
         self.ema = EMAFilter(alpha: config.emaAlpha)
+        self.median = source == .pose ? MedianFilter(window: config.poseMedianWindow) : nil
         if let holdSeconds {
             self.holdDetector = HoldDetector(thresholds: thresholds, targetSeconds: holdSeconds, config: config)
             self.detector = nil
@@ -45,12 +59,20 @@ final class SignalPipeline {
             self.detector = RepDetector(thresholds: thresholds, config: config)
             self.holdDetector = nil
         }
+        if source == .brightness, let detector {
+            evidence = BodyEvidence(config: config)
+            detector.cycleValidator = { [weak self] in
+                guard let evidence = self?.evidence, evidence.hasObservations else { return true }
+                return evidence.supportsCycle
+            }
+        }
     }
 
     var isArmed: Bool { detector?.isArmed ?? holdDetector?.isArmed ?? false }
     var repCount: Int { detector?.repCount ?? holdDetector?.repCount ?? 0 }
     private var phase: RepPhase { detector?.phase ?? holdDetector?.phase ?? .rest }
     private var heldSeconds: TimeInterval? { holdDetector?.heldSeconds }
+    private var activeThresholds: RepThresholds? { detector?.activeThresholds ?? holdDetector?.thresholds }
 
     private func detect(value: Float?, confidence: Float, timestamp: TimeInterval) -> RepDetectorEvent? {
         if let detector { return detector.process(value: value, confidence: confidence, timestamp: timestamp) }
@@ -58,40 +80,19 @@ final class SignalPipeline {
     }
 
     func process(_ observation: FrameObservation) -> PipelineOutput {
+        evidence?.update(observation, cycleActive: phase != .rest)
         let sample = extractor.extract(observation, for: exercise, source: source)
-        var smoothed: Float?
-        if let raw = sample.value, sample.confidence >= config.minConfidence {
-            smoothed = ema.update(raw)
-        } else {
-            smoothed = ema.value // hold the last value; the detector ignores this frame anyway
-        }
-        let event = detect(
-            value: sample.confidence >= config.minConfidence ? smoothed : nil,
-            confidence: sample.confidence,
-            timestamp: observation.timestamp
-        )
-        return PipelineOutput(
-            timestamp: observation.timestamp,
-            exercise: exercise,
-            source: source,
-            raw: sample.value,
-            smoothed: smoothed,
-            confidence: sample.confidence,
-            event: event,
-            phase: phase,
-            isArmed: isArmed,
-            repCount: repCount,
-            heldSeconds: heldSeconds
-        )
+        return process(value: sample.value, confidence: sample.confidence, timestamp: observation.timestamp)
     }
 
-    /// Feeds an already extracted scalar (used by tests and CSV replay).
+    /// Feeds an already extracted scalar (also used by tests and CSV replay).
     func process(value: Float?, confidence: Float, timestamp: TimeInterval) -> PipelineOutput {
         var smoothed: Float?
         if let value, confidence >= config.minConfidence {
-            smoothed = ema.update(value)
+            let filtered = median?.update(value) ?? value
+            smoothed = ema.update(filtered)
         } else {
-            smoothed = ema.value
+            smoothed = ema.value // hold the last value; the detector ignores this frame anyway
         }
         let event = detect(
             value: confidence >= config.minConfidence ? smoothed : nil,
@@ -101,7 +102,7 @@ final class SignalPipeline {
         return PipelineOutput(
             timestamp: timestamp, exercise: exercise, source: source, raw: value, smoothed: smoothed,
             confidence: confidence, event: event, phase: phase, isArmed: isArmed,
-            repCount: repCount, heldSeconds: heldSeconds
+            repCount: repCount, heldSeconds: heldSeconds, thresholds: activeThresholds
         )
     }
 }

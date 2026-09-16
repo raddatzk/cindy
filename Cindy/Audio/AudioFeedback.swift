@@ -12,12 +12,37 @@ final class AudioFeedback {
     private var beepBuffer: AVAudioPCMBuffer?
     private var highBeepBuffer: AVAudioPCMBuffer?
     private var isPrepared = false
+    private var isGraphBuilt = false
+    private var interruptionObserver: NSObjectProtocol?
     var isEnabled = true
 
     private init() {}
 
+    deinit {
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+        }
+    }
+
+    /// Builds the graph once and activates the audio session. Safe to call
+    /// again: after an interruption only the activation has to be redone.
     func prepare() {
-        guard !isPrepared else { return }
+        buildGraph()
+        activate()
+    }
+
+    private func buildGraph() {
+        guard !isGraphBuilt else { return }
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        beepBuffer = AudioFeedback.makeTone(frequency: 1_000, duration: 0.08, format: format)
+        highBeepBuffer = AudioFeedback.makeTone(frequency: 1_500, duration: 0.15, format: format)
+        observeInterruptions()
+        isGraphBuilt = true
+    }
+
+    private func activate() {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers, .duckOthers])
@@ -25,16 +50,47 @@ final class AudioFeedback {
         } catch {
             // Audio is best effort.
         }
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-        beepBuffer = AudioFeedback.makeTone(frequency: 1_000, duration: 0.08, format: format)
-        highBeepBuffer = AudioFeedback.makeTone(frequency: 1_500, duration: 0.15, format: format)
         do {
             try engine.start()
             isPrepared = true
         } catch {
             isPrepared = false
+        }
+    }
+
+    // MARK: - Interruptions
+
+    /// A call deactivates the audio session and stops the engine, and nothing
+    /// brings either back on its own. The phone is on the floor during a
+    /// workout, so the beeps are the whole feedback channel — silence for the
+    /// rest of the session is not something the athlete would notice in time.
+    private func observeInterruptions() {
+        guard interruptionObserver == nil else { return }
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] note in
+            MainActor.assumeIsolated { self?.handleInterruption(note) }
+        }
+    }
+
+    private func handleInterruption(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        switch type {
+        case .began:
+            // The engine is already stopped; scheduling into it would be silent
+            // anyway, and `play` skips it while this is false.
+            isPrepared = false
+        case .ended:
+            // Deliberately not gated on `.shouldResume`: these are short
+            // feedback tones over a mixing session, not media playback that
+            // would rudely take the stage back. If the system refuses, the
+            // `setActive` throw is caught and the next `prepare` tries again.
+            activate()
+        @unknown default:
+            break
         }
     }
 

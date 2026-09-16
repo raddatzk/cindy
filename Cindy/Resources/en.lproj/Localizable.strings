@@ -176,6 +176,10 @@
 "Take it easy" = "Take it easy";
 "The calibration could not be saved: %@" = "The calibration could not be saved: %@";
 "The camera could not be configured: %@" = "The camera could not be configured: %@";
+"Continuing in %lld" = "Continuing in %lld";
+"The camera did not come back. Please start again." = "The camera did not come back. Please start again.";
+"The camera stopped unexpectedly. Please start again." = "The camera stopped unexpectedly. Please start again.";
+"The camera was interrupted. Cindy counts itself back in as soon as it is back." = "The camera was interrupted. Cindy counts itself back in as soon as it is back.";
 "The camera only runs during calibration and your workout. Every frame is analyzed on the iPhone right away and then discarded. No photos or videos are stored." = "The camera only runs during calibration and your workout. Every frame is analyzed on the iPhone right away and then discarded. No photos or videos are stored.";
 "The introduction from the first launch: where the phone goes, what each exercise looks like and why nothing leaves your iPhone." = "The introduction from the first launch: where the phone goes, what each exercise looks like and why nothing leaves your iPhone.";
 "The movement was detected but the start position was not reached again. Please start and end in the start position." = "The movement was detected but the start position was not reached again. Please start and end in the start position.";

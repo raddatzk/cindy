@@ -57,6 +57,10 @@ final class CalibrationEngine {
                 MainActor.assumeIsolated { self?.handle(observation: observation, output: output) }
             }
         }
+        // Already on the main queue, see `CameraSession.onAvailabilityChange`.
+        camera.onAvailabilityChange = { [weak self] availability in
+            MainActor.assumeIsolated { self?.handle(availability) }
+        }
     }
 
     var currentExercise: Exercise? {
@@ -92,6 +96,7 @@ final class CalibrationEngine {
     /// Athlete tapped "Start": countdown, then capture.
     func startExercise() {
         guard let exercise = currentExercise, case .ready = step else { return }
+        audio.prepare()
         countdownTask?.cancel()
         countdownTask = Task { [weak self] in
             guard let self else { return }
@@ -128,6 +133,28 @@ final class CalibrationEngine {
     }
 
     // MARK: - Private
+
+    /// A trace with a hole in it is not a calibration, and the thresholds drawn
+    /// from it would be wrong for every workout afterwards. A countdown or a
+    /// capture that loses the camera is therefore thrown away and offered again
+    /// from the start.
+    private func handle(_ availability: CameraAvailability) {
+        switch availability {
+        case .running:
+            break
+        case .interrupted:
+            switch step {
+            case .countdown, .capturing:
+                cancelTasks()
+                goToReady()
+            default:
+                break
+            }
+        case .failed(let reason):
+            cancelTasks()
+            step = .cameraError(reason)
+        }
+    }
 
     private func goToReady() {
         guard let exercise = currentExercise else { return }

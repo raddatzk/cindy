@@ -20,6 +20,12 @@ final class WorkoutEngine {
     private(set) var trackedSource: SignalSource = .face
     private(set) var liveValue: Float?
     private(set) var errorMessage: String?
+    /// Set while the camera is away. The workout is paused and stays paused
+    /// until the frames are back; `nil` again means it can be resumed.
+    private(set) var cameraInterruption: String?
+    /// Counts down out loud before the workout picks itself back up after an
+    /// interruption. `nil` when nothing is pending.
+    private(set) var resumeCountdown: Int?
     /// Set once the workout is finished or aborted.
     private(set) var result: WorkoutRecord?
 
@@ -43,6 +49,10 @@ final class WorkoutEngine {
     private var accumulated: TimeInterval = 0
     private var segmentStart: Date?
     private var countdownTask: Task<Void, Never>?
+    private var resumeTask: Task<Void, Never>?
+    /// Whether the current pause is one the interruption caused rather than one
+    /// the athlete asked for. Only the former picks itself back up.
+    private var pausedByInterruption = false
     private var cameraRunning = false
     private var logger: FrameLogger?
     private let logToCSV: Bool
@@ -65,6 +75,10 @@ final class WorkoutEngine {
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.handle(observation: observation, output: output) }
             }
+        }
+        // Already on the main queue, see `CameraSession.onAvailabilityChange`.
+        camera.onAvailabilityChange = { [weak self] availability in
+            MainActor.assumeIsolated { self?.handle(availability) }
         }
     }
 
@@ -134,7 +148,12 @@ final class WorkoutEngine {
     }
 
     func resume() {
-        guard machine.phase == .paused else { return }
+        guard machine.phase == .paused, cameraInterruption == nil else { return }
+        cancelAutoResume()
+        // Belt and braces for the audio session: whatever took it away during
+        // the pause, this is the last moment before the phone goes back on the
+        // floor and the beeps become the only feedback again.
+        audio.prepare()
         machine.resume()
         startClock()
         installPipeline(for: machine.exercise)
@@ -144,6 +163,7 @@ final class WorkoutEngine {
     /// Stops early; the partial score is kept as an incomplete record.
     func abort() {
         guard phase != .finished, phase != .idle else { return }
+        cancelAutoResume()
         countdownTask?.cancel()
         finishWorkout(completed: false)
     }
@@ -181,6 +201,10 @@ final class WorkoutEngine {
         accumulated = 0
         startClock()
         installPipeline(for: machine.exercise)
+        // The camera can go away during the countdown, where there is nothing
+        // to pause yet. The workout then starts paused rather than counting
+        // nothing for as long as the interruption lasts.
+        if cameraInterruption != nil { pause() }
         sync()
     }
 
@@ -201,6 +225,54 @@ final class WorkoutEngine {
     /// app going to the background or another app taking the camera all look
     /// like a perfectly still athlete from here.
     ///
+    /// Coming back counts itself back in out loud rather than waiting for a tap:
+    /// the phone is on the floor, and whoever just hung up should be able to
+    /// hear when to start moving instead of having to find the screen.
+    private func handle(_ availability: CameraAvailability) {
+        switch availability {
+        case .running:
+            cameraInterruption = nil
+            if pausedByInterruption, machine.phase == .paused { scheduleAutoResume() }
+        case .interrupted:
+            cancelAutoResume()
+            // A pause the athlete started themselves stays theirs to end.
+            if machine.phase != .paused { pausedByInterruption = true }
+            cameraInterruption = L("The camera was interrupted. Cindy counts itself back in as soon as it is back.")
+            pause()
+        case .failed(let reason):
+            cancelAutoResume()
+            cameraInterruption = nil
+            errorMessage = reason
+            pause()
+        }
+    }
+
+    private func scheduleAutoResume() {
+        resumeTask?.cancel()
+        // Before the first beep, not after: a call leaves the audio session
+        // deactivated, and a silent countdown would defeat the point.
+        audio.prepare()
+        resumeTask = Task { [weak self] in
+            guard let self else { return }
+            for remaining in stride(from: self.config.workoutCountdownSeconds, through: 1, by: -1) {
+                self.resumeCountdown = remaining
+                self.audio.beep()
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+            }
+            self.resumeCountdown = nil
+            self.audio.goSignal()
+            self.resume()
+        }
+    }
+
+    private func cancelAutoResume() {
+        resumeTask?.cancel()
+        resumeTask = nil
+        resumeCountdown = nil
+        pausedByInterruption = false
+    }
+
     private func handle(observation: FrameObservation, output: PipelineOutput?) {
         subjectDetected = CalibrationEngine.subjectDetected(in: observation, source: trackedSource)
         liveValue = output?.smoothed

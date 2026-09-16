@@ -132,6 +132,10 @@
 "No access to the camera. Please allow it in Settings." = "Kein Zugriff auf die Kamera. Bitte in den Einstellungen erlauben.";
 "No front camera found." = "Keine Frontkamera gefunden.";
 "The camera could not be configured: %@" = "Kamera konnte nicht konfiguriert werden: %@";
+"Continuing in %lld" = "Weiter in %lld";
+"The camera did not come back. Please start again." = "Die Kamera ist nicht zurückgekommen. Bitte neu starten.";
+"The camera stopped unexpectedly. Please start again." = "Die Kamera hat unerwartet gestoppt. Bitte neu starten.";
+"The camera was interrupted. Cindy counts itself back in as soon as it is back." = "Die Kamera wurde unterbrochen. Cindy zählt von selbst wieder ein, sobald sie zurück ist.";
 
 /* MARK: - Result and history */
 "Result" = "Ergebnis";

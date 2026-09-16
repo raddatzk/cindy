@@ -59,6 +59,7 @@ private struct WorkoutScreen: View {
             }
             .animation(reduceMotion ? nil : .snappy, value: engine.phase)
             .animation(reduceMotion ? nil : .snappy, value: engine.isPaused)
+            .animation(reduceMotion ? nil : .snappy, value: engine.resumeCountdown)
 
             if engine.phase == .countdown {
                 countdownOverlay
@@ -282,7 +283,8 @@ private struct WorkoutScreen: View {
                         .padding(.vertical, 8)
                 }
                 .brandProminentButtonStyle()
-                .disabled(engine.phase == .countdown || engine.phase == .finished)
+                .disabled(engine.phase == .countdown || engine.phase == .finished
+                          || engine.cameraInterruption != nil)
                 Button(role: .destructive) {
                     confirmAbort = true
                 } label: {
@@ -324,6 +326,19 @@ private struct WorkoutScreen: View {
                 Text(L("Paused"))
                     .font(.title3)
                     .foregroundStyle(.secondary)
+                if let countdown = engine.resumeCountdown {
+                    // Beeped as well, because the phone is back on the floor by
+                    // now and nobody is looking at this.
+                    Text(L("Continuing in \(countdown)"))
+                        .font(.title2.bold())
+                        .foregroundStyle(.brand)
+                        .contentTransition(.numericText(countsDown: true))
+                } else if let interruption = engine.cameraInterruption {
+                    Label(interruption, systemImage: "camera.badge.ellipsis")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
                 Text(engine.exercise.displayName)
                     .font(.title.bold())
                     .foregroundStyle(.brand)
@@ -361,6 +376,8 @@ private struct WorkoutScreen: View {
                             .padding(.vertical, 8)
                     }
                     .brandProminentButtonStyle()
+                    // Resuming without frames would count nothing.
+                    .disabled(engine.cameraInterruption != nil)
                 }
                 .controlSize(.large)
             }

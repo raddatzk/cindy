@@ -1,0 +1,6 @@
+# The wrapper scripts must keep their platform's line endings to run.
+/gradlew        text eol=lf
+*.bat           text eol=crlf
+*.jar           binary
+*.tflite        binary
+*.task          binary

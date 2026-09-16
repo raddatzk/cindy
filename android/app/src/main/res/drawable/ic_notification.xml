@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon of the reminder: a pull-up bar with a stick figure hanging from it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,3h20v2H2z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,9m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,5h2v4.5l2,2.5h4l2,-2.5V5h2v5.2L15,14v8h-2v-5h-2v5H9v-8L6,10.2z" />
+</vector>

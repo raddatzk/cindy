@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Camera -->
+    <string name="camera_error_not_authorized">Kein Zugriff auf die Kamera. Bitte in den Einstellungen erlauben.</string>
+    <string name="camera_error_no_front_camera">Keine Frontkamera gefunden.</string>
+    <string name="camera_error_configuration_failed">Kamera konnte nicht konfiguriert werden: %1$s</string>
+    <string name="camera_error_did_not_come_back">Die Kamera ist nicht zurückgekommen. Bitte neu starten.</string>
+    <string name="camera_error_stopped_unexpectedly">Die Kamera hat unerwartet gestoppt. Bitte neu starten.</string>
+    <string name="camera_permission_title">Kamerazugriff</string>
+    <string name="camera_permission_body">Cindy nutzt die Frontkamera, um während Kalibrierung und Workout Wiederholungen zu zählen. Die Bilder werden nur auf dem Gerät ausgewertet und weder gespeichert noch übertragen.</string>
+    <string name="camera_permission_allow">Kamera erlauben</string>
+
+    <!-- Workout and calibration -->
+    <string name="workout_camera_interrupted">Die Kamera wurde unterbrochen. Cindy zählt von selbst wieder ein, sobald sie zurück ist.</string>
+    <string name="workout_error_no_calibration">Keine vollständige Kalibrierung vorhanden.</string>
+    <string name="calibration_error_save_failed">Kalibrierung konnte nicht gespeichert werden: %1$s</string>
+
+    <!-- Health Connect -->
+    <string name="health_error_unavailable">Health Connect ist auf diesem Gerät nicht verfügbar.</string>
+    <string name="health_error_denied">Cindy darf nicht in Health Connect schreiben. Erlaube es in den Health-Connect-Einstellungen.</string>
+    <string name="health_error_failed">Das Workout konnte nicht in Health Connect geschrieben werden.</string>
+    <string name="health_rationale_title">Datenschutz</string>
+    <string name="health_rationale_body">Gespeicherte Workouts landen als Calisthenics-Einheit in Health Connect, mit einem Abschnitt pro Runde. Cindy liest außerdem Schlaf, Ruhepuls, HRV und Körpergewicht – für die Bereitschafts-Schätzung und die Energieberechnung, sonst nichts. Mit ausgeschaltetem Schalter rührt Cindy Health Connect gar nicht an.\n\nDatenschutzerklärung: %1$s</string>
+
+    <!-- Reminder -->
+    <string name="reminder_channel_name">Erinnerung</string>
+    <string name="reminder_channel_description">Nächste Erinnerung</string>
+    <string name="reminder_notification_title">Zeit für Cindy</string>
+    <string name="reminder_notification_body_recovered">Du solltest erholt sein. Bereit für die nächste Runde?</string>
+    <string name="reminder_notification_body_later_than_usual">Etwas später als sonst – dein Körper war noch am Aufholen.</string>
+    <string name="reminder_notification_body_extra_day">Dein Körper wollte einen Tag extra. Jetzt sollte es passen.</string>
+
+    <!-- Shared -->
+    <string name="common_continue">Weiter</string>
+    <string name="common_done">Fertig</string>
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_back">Zurück</string>
+    <string name="common_open_settings">Einstellungen öffnen</string>
+    <string name="common_automatic">Automatisch</string>
+    <string name="common_duration">Dauer</string>
+    <string name="common_signal">Signal</string>
+    <string name="common_delete">Löschen</string>
+    <string name="common_phone_under_bar">Handy flach auf den Boden unter die Klimmzugstange, Display nach oben.</string>
+
+    <!-- Exercises and units -->
+    <string name="exercise_pull_up_plural">Klimmzüge</string>
+    <string name="exercise_pull_up_singular">Klimmzug</string>
+    <string name="exercise_push_up_plural">Liegestütze</string>
+    <string name="exercise_push_up_singular">Liegestütz</string>
+    <string name="exercise_squat_plural">Kniebeugen</string>
+    <string name="exercise_squat_singular">Kniebeuge</string>
+    <string name="exercise_plank_plural">Plank</string>
+    <string name="exercise_plank_singular">Plank</string>
+    <string name="unit_reps">Wdh.</string>
+    <string name="unit_seconds">s</string>
+    <string name="signal_source_face">Gesicht</string>
+    <string name="signal_source_pose">Body Pose</string>
+    <string name="signal_source_brightness">Helligkeit</string>
+
+    <!-- Plan -->
+    <string name="plan_set_reps">%1$d %2$s</string>
+    <string name="plan_set_hold">%1$d s %2$s</string>
+    <string name="plan_amrap_minutes">AMRAP %1$d min</string>
+    <string name="plan_duration_summary">%1$d min · %2$s</string>
+    <string name="plan_edit_title">Workout anpassen</string>
+    <string name="plan_section_exercises">Übungen pro Runde</string>
+    <string name="plan_section_exercises_footer">Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.</string>
+    <string name="plan_section_not_in_plan">Nicht im Plan</string>
+    <string name="plan_add_exercise">%1$s hinzufügen</string>
+    <string name="plan_remove_exercise">%1$s entfernen</string>
+    <string name="plan_move_up">Nach oben</string>
+    <string name="plan_move_down">Nach unten</string>
+    <string name="plan_decrease">Weniger</string>
+    <string name="plan_increase">Mehr</string>
+    <string name="plan_reset">Auf Original Cindy zurücksetzen</string>
+
+    <!-- Start screen -->
+    <string name="start_workout">Workout starten</string>
+    <string name="start_calibrate">Kalibrieren</string>
+    <string name="start_recalibrate">Neu kalibrieren</string>
+    <string name="start_not_calibrated">Nicht kalibriert</string>
+    <string name="start_missing">Fehlt: %1$s</string>
+    <string name="start_last_score">Zuletzt %1$s</string>
+
+    <!-- Intro -->
+    <string name="onboarding_welcome_title">Willkommen bei Cindy</string>
+    <string name="onboarding_welcome_body">Cindy ist ein CrossFit-Benchmark-Workout. Eine Runde: %1$s. Diese Runde wiederholst du in %2$d Minuten so oft wie möglich — dafür steht AMRAP.</string>
+    <string name="onboarding_welcome_score">Dein Score sind die Runden plus die Wiederholungen der angefangenen Runde. Den Plan kannst du jederzeit anpassen.</string>
+    <string name="onboarding_setup_title">Handy einmal hinlegen</string>
+    <string name="onboarding_setup_stays">Dort bleibt es das ganze Workout. Du musst es nicht mehr anfassen und nicht mehr draufschauen.</string>
+    <string name="onboarding_setup_beeps">Cindy piept bei jeder Wiederholung, mit einem höheren Ton, wenn eine Übung geschafft ist.</string>
+    <string name="onboarding_setup_privacy">Jedes Bild wird direkt auf dem Handy ausgewertet und sofort verworfen. Keine Fotos, kein Video, keine Internetverbindung.</string>
+    <string name="onboarding_calibration_title">Zuerst einmal kalibrieren</string>
+    <string name="onboarding_calibration_body">Jeder bewegt sich anders, deshalb misst Cindy dich einmal aus: eine Wiederholung pro Übung, nacheinander. Das dauert etwa zwei Minuten.</string>
+    <string name="onboarding_calibration_repeat">Wiederhol das, wenn du das Handy anders hinlegst oder die Zählung ungenau wird.</string>
+    <string name="onboarding_calibration_clothes">Trainiere in der Kleidung, in der du kalibriert hast, ohne Mütze oder Kapuze.</string>
+    <string name="onboarding_not_now">Später</string>
+    <string name="onboarding_skip">Überspringen</string>
+    <string name="onboarding_start_calibration">Kalibrierung starten</string>
+    <string name="onboarding_page">Seite %1$d von %2$d</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_display">Darstellung</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_appearance">Erscheinungsbild</string>
+    <string name="settings_theme_light">Hell</string>
+    <string name="settings_theme_dark">Dunkel</string>
+    <string name="settings_display_footer">„Automatisch“ folgt der Geräteeinstellung.</string>
+    <string name="settings_how_cindy_works">Wie Cindy funktioniert</string>
+    <string name="settings_how_cindy_works_footer">Die Einführung vom ersten Start: wohin das Handy kommt, wie jede Übung aussieht und warum nichts dein Handy verlässt.</string>
+    <string name="settings_health_header">Health Connect</string>
+    <string name="settings_health_sync">Mit Health Connect synchronisieren</string>
+    <string name="settings_health_export">Frühere Workouts übertragen</string>
+    <string name="settings_health_footer">Gespeicherte Workouts landen als Calisthenics-Einheit in Health Connect, mit einem Abschnitt pro Runde. Cindy liest außerdem Schlaf, Ruhepuls, HRV und Körpergewicht – für die Bereitschafts-Schätzung und die Energieberechnung, sonst nichts. Mit ausgeschaltetem Schalter rührt Cindy Health Connect gar nicht an.</string>
+    <string name="settings_health_install">Health Connect installieren oder aktualisieren</string>
+    <string name="settings_health_install_footer">Für die Synchronisierung braucht Cindy die App Health Connect.</string>
+    <string name="settings_reminder_header">Erinnerung</string>
+    <string name="settings_remind_me">Erinnere mich</string>
+    <string name="settings_next_reminder">Nächste Erinnerung</string>
+    <string name="settings_reminder_denied">Benachrichtigungen sind für Cindy ausgeschaltet. Schalte sie in Einstellungen › Apps › Cindy › Benachrichtigungen ein.</string>
+    <string name="settings_reminder_footer">Cindy wählt den Zeitpunkt danach, wie hart das letzte Workout war, wie du dich erholt hast und wann du sonst trainierst – und verschiebt ihn, wenn dein Körper das sagt. Geplant wird auf dem Gerät, verschickt wird nichts.</string>
+    <string name="settings_privacy">Datenschutz</string>
+    <string name="settings_privacy_no_recording_title">Keine Video- oder Bildaufnahmen</string>
+    <string name="settings_privacy_no_recording_body">Die Kamera wird nur während Kalibrierung und Workout eingeschaltet. Jedes Bild wird sofort auf dem Handy ausgewertet und danach verworfen. Es werden keine Fotos oder Videos gespeichert.</string>
+    <string name="settings_privacy_nothing_sent_title">Nichts wird verschickt</string>
+    <string name="settings_privacy_nothing_sent_body">Cindy hat keine Server, keine Accounts und baut keine Internetverbindung auf. Deine Daten verlassen das Gerät nur, wenn du selbst etwas über Teilen weitergibst.</string>
+    <string name="settings_privacy_local_title">Was lokal gespeichert wird</string>
+    <string name="settings_privacy_local_body">Kalibrierung, Workout-Plan und Historie liegen im Speicher der App. Sie landen in keinem Geräte-Backup und werden beim Löschen der App entfernt.</string>
+    <string name="settings_privacy_policy">Datenschutzerklärung</string>
+    <string name="settings_support">Support</string>
+    <string name="settings_recordings_header">Signal-Aufnahmen</string>
+    <string name="settings_record_workouts">Workouts mitschneiden</string>
+    <string name="settings_recordings">Aufnahmen</string>
+    <string name="settings_recordings_footer">Schreibt während jedes Workouts eine CSV-Datei mit Messwerten wie Gesichtsgröße, Signal und Zählerstand. Sie enthält nur Zahlen und Zustandsangaben, keine Bilder. Hilft bei der Fehlersuche, wenn falsch gezählt wird. Etwa %1$s pro 20 Minuten.</string>
+    <string name="settings_version">Version</string>
+    <string name="recordings_empty_title">Keine Aufnahmen</string>
+    <string name="recordings_empty_body">Schalte „Workouts mitschneiden“ ein und mach ein Workout.</string>
+    <string name="recordings_share">Aufnahme teilen</string>
+    <string name="recordings_delete">Aufnahme löschen</string>
+
+    <!-- Calibration -->
+    <string name="calibration_title">Kalibrierung</string>
+    <string name="calibration_how_it_works">So funktioniert’s</string>
+    <string name="calibration_intro_clothes">In Trainingskleidung kalibrieren, ohne Cap oder Kapuze.</string>
+    <string name="calibration_intro_reps">Nacheinander je eine Wiederholung: %1$s. Vor jedem Countdown in der Ausgangsposition ruhig bleiben.</string>
+    <string name="calibration_intro_privacy">Alles bleibt auf dem Gerät. Es werden keine Bilder gespeichert.</string>
+    <string name="calibration_step">Schritt %1$d von %2$d</string>
+    <string name="calibration_start">Start (%1$d/%2$d)</string>
+    <string name="calibration_hold_start">Ausgangsposition halten</string>
+    <string name="calibration_now_one">Jetzt: 1 %1$s</string>
+    <string name="calibration_now_plank">Jetzt: Plank ruhig halten</string>
+    <string name="calibration_detected">Erkannt</string>
+    <string name="calibration_not_detected">Nicht erkannt</string>
+    <string name="calibration_seconds">%1$s s</string>
+    <string name="calibration_thresholds">Schwellen</string>
+    <string name="calibration_direction">Richtung</string>
+    <string name="calibration_direction_up">Ausschlag nach oben</string>
+    <string name="calibration_direction_down">Ausschlag nach unten</string>
+    <string name="calibration_repeat">Wiederholen</string>
+    <string name="calibration_saved">Kalibrierung gespeichert</string>
+    <string name="calibration_back_to_start">Zum Start</string>
+    <string name="calibration_face_detected">Gesicht erkannt</string>
+    <string name="calibration_no_face_in_frame">Kein Gesicht im Bild</string>
+    <string name="calibration_person_detected">Person erkannt</string>
+    <string name="calibration_no_person_in_frame">Keine Person im Bild</string>
+    <string name="calibration_instruction_pull_up">Häng dich mit gestreckten Armen an die Stange und bleib ruhig. Nach dem Countdown: ein Klimmzug bis das Kinn über der Stange ist, dann wieder ganz aushängen.</string>
+    <string name="calibration_instruction_push_up">Geh in die Liegestützposition mit gestreckten Armen, Gesicht über dem Handy. Nach dem Countdown: ein Liegestütz, dann wieder oben bleiben.</string>
+    <string name="calibration_instruction_squat">Zehen knapp hinter dem Handy, dann still halten; schauen kannst du, wohin du willst. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.</string>
+    <string name="calibration_instruction_plank">Geh in die Plank-Position, Gesicht über dem Handy, und bleib ruhig. Nach dem Countdown die Position 3 Sekunden halten.</string>
+    <string name="calibration_failure_no_face">Kein Gesicht erkannt. Prüfe Licht und Position: Dein Gesicht muss direkt über dem Handy sein.</string>
+    <string name="calibration_failure_no_person">Keine Person erkannt. Prüfe Licht und Position: Deine Schultern müssen über der Kamera und im Bild sein.</string>
+    <string name="calibration_failure_too_weak">Die Bewegung war im Signal zu schwach. Halte dein Gesicht direkt über dem Handy; für Klimmzüge leg das Handy genau unter die Stange.</string>
+    <string name="calibration_failure_low_contrast">Das Bild ist bei der Kniebeuge kaum dunkler geworden. Halt die Zehen direkt hinter dem Handy; ein helles Deckenlicht über dir hilft, ein helles Shirt vor heller Decke nicht.</string>
+    <string name="calibration_failure_no_return">Die Bewegung wurde erkannt, aber die Ausgangsposition nicht wieder erreicht. Bitte in der Ausgangsposition starten und dort wieder enden.</string>
+    <string name="calibration_failure_implausible_duration">Die Wiederholung dauerte %1$s s. Plausibel sind %2$s–%3$s s. Bitte in normalem Tempo wiederholen.</string>
+
+    <!-- Workout -->
+    <string name="workout_title">Workout</string>
+    <string name="workout_round">Runde %1$d</string>
+    <string name="workout_rec">REC</string>
+    <string name="workout_up_next">Danach: %1$s</string>
+    <string name="workout_now_do">Weiter mit</string>
+    <string name="workout_face">Gesicht</string>
+    <string name="workout_no_face">Kein Gesicht</string>
+    <string name="workout_person">Person</string>
+    <string name="workout_no_person">Keine Person</string>
+    <string name="workout_waiting_start">Warte auf Ausgangsposition</string>
+    <string name="workout_hold">Halten</string>
+    <string name="workout_counting">Zählt</string>
+    <string name="workout_signal_lost">Signal verloren</string>
+    <string name="workout_paused">Pause</string>
+    <string name="workout_pause">Pause</string>
+    <string name="workout_resume">Weiter</string>
+    <string name="workout_stop">Abbrechen</string>
+    <string name="workout_stop_title">Workout abbrechen?</string>
+    <string name="workout_stop_confirm">Abbrechen und Ergebnis anzeigen</string>
+    <string name="workout_keep_going">Weitermachen</string>
+    <string name="workout_apply">Übernehmen</string>
+    <string name="workout_plan_footer">Gilt ab jetzt, geschaffte Runden bleiben. Hinzufügen lassen sich nur kalibrierte Übungen.</string>
+    <string name="workout_now">Jetzt: %1$s</string>
+    <string name="workout_get_ready">Bereit machen</string>
+    <string name="workout_starting_with">Start mit %1$s: erst ruhig in der Ausgangsposition bleiben</string>
+    <string name="workout_continuing_in">Weiter in %1$d</string>
+    <string name="workout_last_minute">Letzte Minute</string>
+    <string name="workout_one_rep_less">Eine Wiederholung weniger</string>
+    <string name="workout_one_rep_more">Eine Wiederholung mehr</string>
+    <string name="workout_progress">%1$d von %2$d</string>
+    <string name="workout_hide_preview">Kameravorschau ausblenden</string>
+    <string name="workout_show_preview">Kameravorschau einblenden</string>
+
+    <!-- Result and history -->
+    <string name="result_title">Ergebnis</string>
+    <string name="result_time">Zeit!</string>
+    <string name="result_stopped">Abgebrochen</string>
+    <string name="result_save">Speichern</string>
+    <string name="result_discard">Verwerfen</string>
+    <string name="result_previous">Letztes Ergebnis: %1$s</string>
+    <string name="result_first_saved">Erstes gespeichertes Workout</string>
+    <string name="result_next_time">Nächstes Mal</string>
+    <string name="result_adopt">In den Plan übernehmen</string>
+    <string name="result_adopted">Übernommen</string>
+    <plurals name="result_rounds">
+        <item quantity="one">%d Runde</item>
+        <item quantity="other">%d Runden</item>
+    </plurals>
+    <plurals name="result_reps">
+        <item quantity="one">%d Rep</item>
+        <item quantity="other">%d Reps</item>
+    </plurals>
+    <plurals name="result_total_reps">
+        <item quantity="one">%d Wiederholung</item>
+        <item quantity="other">%d Wiederholungen</item>
+    </plurals>
+    <plurals name="result_reps_gained">
+        <item quantity="one">+%d Rep</item>
+        <item quantity="other">+%d Reps</item>
+    </plurals>
+    <string name="history_title">Historie</string>
+    <string name="history_empty_title">Noch keine Workouts</string>
+    <string name="history_empty_body">Gespeicherte Ergebnisse erscheinen hier.</string>
+    <string name="history_stopped_after">abgebrochen nach %1$s</string>
+
+    <!-- Round chart -->
+    <string name="chart_round_times">Rundenzeiten</string>
+    <string name="chart_reserve">Reserve %1$s</string>
+    <string name="chart_no_round_times">Keine Rundenzeiten aufgezeichnet.</string>
+    <string name="chart_average">Ø %1$d s pro Runde</string>
+    <string name="chart_fastest_slowest">schnellste %1$d s · langsamste %2$d s</string>
+
+    <!-- Progression advice -->
+    <plurals name="progression_finish_full_duration">
+        <item quantity="one">Erst die volle %d Minute durchziehen, dann steigern.</item>
+        <item quantity="other">Erst die vollen %d Minuten durchziehen, dann steigern.</item>
+    </plurals>
+    <string name="progression_rounds_dropped">Runden sind von %1$d auf %2$d gefallen. Zurück auf den vorherigen Plan.</string>
+    <string name="progression_too_few_rounds">Zu wenige Runden für eine Bewertung. Plan beibehalten.</string>
+    <string name="progression_pace_fading">Letztes Viertel nur %1$s vom ersten. Plan halten, bis das Tempo durchgehend steht.</string>
+    <string name="progression_raise_duration">Tempo stabil (%1$s). Zeit auf %2$d Minuten erhöhen.</string>
+    <string name="progression_raise_reps">Tempo stabil (%1$s). %2$s auf %3$d pro Runde.</string>
+    <string name="progression_raise_plank">Sets auf Cindy-Niveau. Plank auf %1$d s.</string>
+    <plurals name="progression_raise_density">
+        <item quantity="one">Volles Cindy, Tempo stabil. Ziel nächstes Mal: %d Runde.</item>
+        <item quantity="other">Volles Cindy, Tempo stabil. Ziel nächstes Mal: %d Runden.</item>
+    </plurals>
+
+    <!-- Readiness -->
+    <string name="readiness_title">Bereitschaft</string>
+    <string name="readiness_score_description">Bereitschaft %1$d von 100</string>
+    <string name="readiness_band_rest">Ruhetag</string>
+    <string name="readiness_band_easy">Locker angehen</string>
+    <string name="readiness_band_ready">Bereit</string>
+    <string name="readiness_band_primed">Topfit</string>
+    <string name="readiness_advice_rest">Dein Körper arbeitet noch am letzten Workout. Spazieren, dehnen, schlafen.</string>
+    <string name="readiness_advice_easy">Etwas Kurzes ist okay – nimm Dauer oder Wiederholungen zurück.</string>
+    <string name="readiness_advice_ready">Zieh deinen normalen Plan durch.</string>
+    <string name="readiness_advice_primed">Guter Tag, um den Plan eine Stufe höher zu setzen.</string>
+    <string name="readiness_history_only">Nur aus deinem Verlauf geschätzt – verbinde Health Connect für Schlaf- und Herzdaten.</string>
+    <string name="readiness_since_last_workout" tools:ignore="Typos">%1$d h seit dem letzten Workout, empfohlen sind %2$d h</string>
+    <string name="readiness_training_load">Umfang dieser Woche: %1$s× dein Schnitt</string>
+    <string name="readiness_sleep">%1$s h Schlaf letzte Nacht</string>
+    <string name="readiness_hrv">HRV %1$d ms, dein Schnitt %2$d ms</string>
+    <string name="readiness_resting_heart_rate">Ruhepuls %1$d bpm, dein Schnitt %2$d bpm</string>
+    <string name="readiness_next_session">Nächstes Training %1$s</string>
+
+    <!-- Exercise demos -->
+    <string name="demo_show_movement">Bewegung ansehen</string>
+    <string name="demo_show_exercise_movement">Bewegung für %1$s ansehen</string>
+    <string name="demo_pause_movement">Bewegung anhalten</string>
+    <string name="demo_play_movement">Bewegung abspielen</string>
+    <string name="demo_cue_pull_up_start_hanging">Start im Hang mit gestreckten Armen.</string>
+    <string name="demo_cue_pull_up_chin_above_bar">Zieh dich hoch, bis das Kinn über der Stange ist, dann wieder ganz ablassen.</string>
+    <string name="demo_cue_pull_up_phone_under_bar">Handy auf den Boden unter die Stange, Display nach oben.</string>
+    <string name="demo_cue_pull_up_placement">Häng an der Stange direkt über dem Handy.</string>
+    <string name="demo_cue_push_up_start_at_top">Start oben mit gestreckten Armen, Gesicht über dem Handy.</string>
+    <string name="demo_cue_push_up_chest_off_floor">Runter, bis die Brust knapp über dem Boden ist, dann wieder hochdrücken.</string>
+    <string name="demo_cue_push_up_straight_line">Halte den Körper von den Schultern bis zu den Fersen in einer geraden Linie.</string>
+    <string name="demo_cue_push_up_placement">Mit gestreckten Armen ist dein Gesicht direkt über dem Handy.</string>
+    <string name="demo_cue_squat_toes_behind_phone">Zehen knapp hinter dem Handy.</string>
+    <string name="demo_cue_squat_depth">Geh mindestens so tief, dass die Hüfte auf Kniehöhe ist, dann ganz aufrichten.</string>
+    <string name="demo_cue_squat_look_anywhere">Schau, wohin du willst.</string>
+    <string name="demo_cue_squat_placement">Das Handy liegt knapp vor deinen Zehen, dort, wo unten dein Gesicht ist; schau, wohin du willst.</string>
+    <string name="demo_cue_plank_forearms">Unterarme auf dem Boden, Ellbogen unter den Schultern, Gesicht über dem Handy.</string>
+    <string name="demo_cue_plank_hold_still">Ruhig halten — die Uhr läuft, solange du die Position hältst.</string>
+    <string name="demo_cue_plank_one_line">Schultern, Hüfte und Fersen bleiben auf einer Linie.</string>
+    <string name="demo_cue_plank_placement">Unterarme links und rechts vom Handy, Gesicht direkt darüber.</string>
+</resources>

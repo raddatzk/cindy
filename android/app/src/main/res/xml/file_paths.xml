@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug CSV recordings (FrameLogger), shared through the share sheet. -->
+<paths>
+    <files-path
+        name="debug_logs"
+        path="DebugLogs/" />
+</paths>

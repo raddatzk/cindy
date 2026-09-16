@@ -163,7 +163,7 @@ jobs:
           packageName: me.raddatz.cindy
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           releaseName: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
-          track: ${{ inputs.track }}
+          tracks: ${{ inputs.track }}
           status: ${{ inputs.status }}
           # Lets the Play Console de-obfuscate crash reports from R8-shrunk builds.
           mappingFile: android/app/build/outputs/mapping/release/mapping.txt

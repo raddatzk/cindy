@@ -1,0 +1,58 @@
+name: CI Android
+
+# Pushes to main and pull requests that touch the Android app or the CSV
+# fixtures both apps replay; an iOS-only or docs-only change runs nothing here.
+# Nothing here signs anything, so it needs no secrets.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'shared/**'
+      - '.github/workflows/ci-android.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'shared/**'
+      - '.github/workflows/ci-android.yml'
+
+concurrency:
+  group: ci-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    # Linux is enough for Gradle and bills at a tenth of macOS.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Caches the wrapper distribution and dependencies, keyed on the build
+      # scripts and the version catalog.
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The pure pipeline tests replay the same CSV fixtures as the iOS tests,
+      # so a detector change that drifts on one platform fails here too.
+      - name: Test
+        run: ./gradlew :core:test :app:testDebugUnitTest
+
+      # Lint treats a string without its German translation as an error,
+      # which is what tools/check_localization.py does for the iOS catalogs.
+      - name: Lint
+        run: ./gradlew :app:lintDebug
+
+      # Release as well, because R8 shrinking only runs there and a missing
+      # keep rule would otherwise first show up in a Play build.
+      - name: Build for release
+        run: ./gradlew :app:assembleRelease

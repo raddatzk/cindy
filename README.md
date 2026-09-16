@@ -383,17 +383,26 @@ tools/             analyze_csv.py, check_localization.py (iOS catalogs), check_l
 
 ## CI and release
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request,
-with one job per platform. The iOS job regenerates the project from
-`ios/project.yml`, checks both string catalogs with
-`tools/check_localization.py`, runs the unit tests on whatever iPhone simulator
-the runner has, and builds Release once so `#if DEBUG`-only breakage shows up
-here. The Android job runs on Linux: the JVM tests of both modules, lint (which
-fails on a missing German string) and a Release build, so a missing R8 keep rule
-shows up before a Play build. Neither signs anything or needs secrets.
+CI is one workflow per platform, each on pushes to `main` and pull requests that
+touch its own directory. `.github/workflows/ci-ios.yml` watches `ios/`, `shared/`
+and `tools/check_localization.py`: it regenerates the project from
+`ios/project.yml`, checks both string catalogs, runs the unit tests on whatever
+iPhone simulator the runner has, and builds Release once so `#if DEBUG`-only
+breakage shows up here. `.github/workflows/ci-android.yml` watches `android/` and
+`shared/` and runs on Linux: the JVM tests of both modules, lint (which fails on
+a missing German string) and a Release build, so a missing R8 keep rule shows up
+before a Play build. A change to the shared CSV fixtures runs both, a docs-only
+change runs neither, and a workflow file change runs its own workflow. Neither
+signs anything or needs secrets. Should these checks ever become required for
+merging, keep in mind that a path-filtered workflow that does not run leaves its
+required check pending.
+
+The release workflows do not look at paths: they run only when started by hand
+or by a tag, and the tags are per platform (`v*` for iOS, `android-v*` for
+Android, which `v*` does not match).
 
 `.github/workflows/release.yml` archives the iOS app and uploads it to
-TestFlight; there is no Play release job yet. Start it by
+TestFlight. Start it by
 hand (Actions → Release to TestFlight → Run workflow) or push a `v*` tag; a tag
 that disagrees with `MARKETING_VERSION` in `project.yml` fails the run instead
 of arriving in App Store Connect as the wrong version. The build number is the

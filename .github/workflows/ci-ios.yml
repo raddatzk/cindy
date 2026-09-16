@@ -1,16 +1,29 @@
-name: CI
+name: CI iOS
 
-# Every push to main and every pull request. Nothing here signs anything, so
-# it needs no secrets and keeps running even if the certificates expire.
+# Pushes to main and pull requests that touch the iOS app or what its tests
+# use. The CSV fixtures in shared/ are replayed by both apps, so a change there
+# runs both CI workflows; an Android-only or docs-only change runs neither
+# macOS job. Nothing here signs anything, so it needs no secrets and keeps
+# running even if the certificates expire.
 on:
   push:
     branches: [main]
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'tools/check_localization.py'
+      - '.github/workflows/ci-ios.yml'
   pull_request:
+    paths:
+      - 'ios/**'
+      - 'shared/**'
+      - 'tools/check_localization.py'
+      - '.github/workflows/ci-ios.yml'
 
 # A second push to the same branch makes the first run pointless. macOS
 # minutes bill at ten times the rate of Linux, so cancel rather than queue.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-ios-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -100,39 +113,3 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
         shell: bash
-
-  android:
-    # Linux is enough for Gradle and bills at a tenth of macOS.
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    defaults:
-      run:
-        working-directory: android
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      # Caches the wrapper distribution and dependencies, keyed on the build
-      # scripts and the version catalog.
-      - uses: gradle/actions/setup-gradle@v4
-
-      # The pure pipeline tests replay the same CSV fixtures as the iOS tests,
-      # so a detector change that drifts on one platform fails here too.
-      - name: Test
-        run: ./gradlew :core:test :app:testDebugUnitTest
-
-      # Lint treats a string without its German translation as an error,
-      # which is what tools/check_localization.py does for the iOS catalogs.
-      - name: Lint
-        run: ./gradlew :app:lintDebug
-
-      # Release as well, because R8 shrinking only runs there and a missing
-      # keep rule would otherwise first show up in a Play build.
-      - name: Build for release
-        run: ./gradlew :app:assembleRelease

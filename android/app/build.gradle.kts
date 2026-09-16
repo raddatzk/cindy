@@ -4,6 +4,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Upload signing for Google Play (Play App Signing re-signs with Google's key). Everything comes
+// from the environment, so the same build signs locally and in CI and no secret is ever in the
+// repository. Without CINDY_UPLOAD_KEYSTORE the release build stays unsigned, which is all the CI
+// build job needs. Blank counts as unset: GitHub Actions passes a missing secret as "".
+fun env(name: String): String? = providers.environmentVariable(name).orNull?.takeIf { it.isNotBlank() }
+
+val uploadKeystore: String? = env("CINDY_UPLOAD_KEYSTORE")
+
 android {
     namespace = "me.raddatz.cindy"
     compileSdk = 37
@@ -12,8 +20,24 @@ android {
         applicationId = "me.raddatz.cindy"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
+        // Play rejects an upload whose versionCode is not higher than every earlier one; the
+        // release workflow passes its run number.
+        versionCode = env("CINDY_VERSION_CODE")?.toInt() ?: 1
         versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        if (uploadKeystore != null) {
+            create("upload") {
+                storeFile = file(uploadKeystore)
+                val password = checkNotNull(env("CINDY_UPLOAD_STORE_PASSWORD")) {
+                    "CINDY_UPLOAD_KEYSTORE is set, but CINDY_UPLOAD_STORE_PASSWORD is not."
+                }
+                storePassword = password
+                keyAlias = env("CINDY_UPLOAD_KEY_ALIAS") ?: "upload"
+                keyPassword = env("CINDY_UPLOAD_KEY_PASSWORD") ?: password
+            }
+        }
     }
 
     buildTypes {
@@ -21,6 +45,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("upload")?.let { signingConfig = it }
         }
     }
 

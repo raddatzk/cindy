@@ -442,6 +442,59 @@ limit and every later run fails.
 Both certificates are imported into a throwaway keychain that is deleted even
 when the archive fails.
 
+### Google Play
+
+`.github/workflows/release-android.yml` builds the signed App Bundle and uploads
+it to Google Play. Start it by hand (Actions → Release to Google Play → Run
+workflow) and pick the track — internal by default — or push an `android-v*`
+tag, which ships to the internal track and must agree with `versionName` in
+`android/app/build.gradle.kts`. Android tags have their own prefix so they never
+start the TestFlight job. The version code is ten times the run number plus the
+attempt, so every run and every re-run is higher than the last upload, including
+the manual first one (version code 1).
+
+Before uploading, the job runs both test suites, checks the bundle is signed and
+prints the upload certificate's SHA-256 (compare it with Test and release › App
+integrity in the Play Console), and fails if the merged release manifest asks
+for network access — the privacy policy promises none, and a library update can
+quietly merge `INTERNET` back in. The R8 mapping file goes along, so crash
+reports in the Play Console are readable.
+
+The build signs from the environment (`CINDY_UPLOAD_KEYSTORE`,
+`CINDY_UPLOAD_STORE_PASSWORD`, optional `CINDY_UPLOAD_KEY_ALIAS` defaulting to
+`upload` and `CINDY_UPLOAD_KEY_PASSWORD` defaulting to the store password,
+`CINDY_VERSION_CODE`); without a keystore the release build stays unsigned, which
+is what the CI job builds. A bundle for a manual upload is built the same way
+locally, with the password read so it stays out of the shell history:
+
+```bash
+cd android
+read -s "CINDY_UPLOAD_STORE_PASSWORD?Keystore password: " && export CINDY_UPLOAD_STORE_PASSWORD
+CINDY_UPLOAD_KEYSTORE=~/cindy-upload.jks ./gradlew :app:bundleRelease
+```
+
+Three repository secrets, plus two optional ones:
+
+| Secret | What it is |
+|--------|------------|
+| `ANDROID_UPLOAD_KEYSTORE` | the upload keystore, base64 of the `.jks` |
+| `ANDROID_UPLOAD_STORE_PASSWORD` | its password |
+| `PLAY_SERVICE_ACCOUNT_JSON` | JSON key of a Google Cloud service account with "Google Play Android Developer API" enabled, invited in Play Console › Users and permissions with release rights for Cindy only |
+| `ANDROID_UPLOAD_KEY_ALIAS` | optional, if the alias is not `upload` |
+| `ANDROID_UPLOAD_KEY_PASSWORD` | optional, if the key has its own password |
+
+Play App Signing holds the key users' installs are signed with; the keystore is
+only the upload key. Keep the `.jks` and its password in the password manager —
+a secret cannot be read back, and a lost upload key takes a support request to
+replace. Never commit it: the repository is public, and `.gitignore` excludes
+`*.jks`, `*.keystore`, `*.p12` and `*.p8`.
+
+The Play Developer API cannot create an app's very first release, so version
+code 1 was uploaded by hand. While the app has never been published in
+production, the API may only accept releases as drafts; if an upload fails with
+"Only releases with status draft may be created on draft app", run the workflow
+with status `draft` and roll the release out in the Play Console.
+
 ## Privacy
 
 `ios/Cindy/PrivacyInfo.xcprivacy` declares no tracking, no collected data and the

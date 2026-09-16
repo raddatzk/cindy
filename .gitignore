@@ -22,3 +22,9 @@ build/
 
 # Python bytecode from the Blender asset scripts
 __pycache__/
+
+# Signing keys. The repository is public: upload keystores live in 1Password and GitHub secrets only.
+*.jks
+*.keystore
+*.p12
+*.p8

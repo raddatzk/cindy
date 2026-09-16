@@ -1,0 +1,169 @@
+name: Release to Google Play
+
+# Run it by hand for every Play build: Actions -> Release to Google Play -> Run
+# workflow, and pick the track. The version name comes from
+# android/app/build.gradle.kts and the version code from the run, so repeated
+# runs are new builds of the same version, like the TestFlight job.
+#
+# A tag is optional and marks a release in git. Android tags are android-v*,
+# so they never start the TestFlight job, which listens to v*. Push one and the
+# job checks it agrees with versionName and ships to the internal track.
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play track to release to
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      status:
+        description: >-
+          completed rolls the release out on the track. draft only prepares it
+          in the Play Console, which the API insists on for an app that has
+          never been published in production.
+        type: choice
+        options: [completed, draft]
+        default: completed
+  push:
+    tags: ['android-v*']
+
+concurrency:
+  group: release-android
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  play:
+    # GitHub-hosted, like CI. Only a manual dispatch or a tag starts this job,
+    # and secrets are never handed to a workflow triggered from a fork, so the
+    # upload key stays out of reach of anyone opening a pull request.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Work out the version
+        id: version
+        run: |
+          # One source of truth, the same one the app reads.
+          name=$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -1)
+          if [ -z "$name" ]; then
+            echo "::error::No versionName found in android/app/build.gradle.kts."
+            exit 1
+          fi
+
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tagged="${GITHUB_REF_NAME#android-v}"
+            if [ "$tagged" != "$name" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME says $tagged but build.gradle.kts says $name — bump one of them."
+              exit 1
+            fi
+          fi
+
+          # Play rejects a versionCode that is not higher than every earlier
+          # upload, including the manual first one (1). Ten per run leaves room
+          # for re-running a failed attempt of the same run.
+          code=$(( ${{ github.run_number }} * 10 + ${{ github.run_attempt }} ))
+
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Shipping $name (versionCode $code)"
+
+      # Said out loud before twenty minutes of building, not as a cryptic
+      # Gradle error at the end.
+      - name: Check the secrets are there
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          SERVICE_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=0
+          for pair in "ANDROID_UPLOAD_KEYSTORE:$KEYSTORE" "ANDROID_UPLOAD_STORE_PASSWORD:$STORE_PASSWORD" "PLAY_SERVICE_ACCOUNT_JSON:$SERVICE_ACCOUNT"; do
+            if [ -z "${pair#*:}" ]; then
+              echo "::error::Repository secret ${pair%%:*} is not set."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Install the upload key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+        run: |
+          echo "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "CINDY_UPLOAD_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      # The shared CSV replays hold the detector to the same counts as iOS; a
+      # release that miscounts is worse than no release.
+      - name: Test
+        run: ./gradlew :core:test :app:testDebugUnitTest
+
+      - name: Build the bundle
+        env:
+          CINDY_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          CINDY_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          CINDY_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          CINDY_VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: ./gradlew :app:bundleRelease
+
+      # An unsigned or wrongly signed bundle is only rejected by Play after the
+      # upload. The fingerprint must match the upload key in the Play Console
+      # (Test and release › App integrity › App signing).
+      - name: Check the bundle is signed with the upload key
+        run: |
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          if ! jarsigner -verify "$bundle" | grep -q "jar verified"; then
+            jarsigner -verify "$bundle" || true
+            echo "::error::$bundle is not signed."
+            exit 1
+          fi
+          keytool -printcert -jarfile "$bundle" | grep -E "SHA256:"
+
+      # The privacy policy promises no network access. A library update can
+      # merge the INTERNET permission back in without anyone noticing, and
+      # Play would then list it on the store page.
+      - name: Check the app still has no network permission
+        run: |
+          manifest=$(find app/build/intermediates/merged_manifest/release -name AndroidManifest.xml | head -1)
+          if [ -z "$manifest" ]; then
+            echo "::error::Merged release manifest not found."
+            exit 1
+          fi
+          if grep -E 'android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)"' "$manifest"; then
+            echo "::error::The release manifest requests network access — see the tools:node=\"remove\" entries in AndroidManifest.xml."
+            exit 1
+          fi
+          echo "No network permission in $manifest"
+
+      - name: Upload to Google Play
+        # Pinned to the v1.1.5 commit: this third-party action receives the
+        # service account key, so a moved tag must not change what runs.
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: me.raddatz.cindy
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          releaseName: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
+          track: ${{ inputs.track || 'internal' }}
+          status: ${{ inputs.status || 'completed' }}
+          # Lets the Play Console de-obfuscate crash reports from R8-shrunk builds.
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+
+      # Runs even when a step above failed, so no key is left on the runner.
+      - name: Clean up
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"

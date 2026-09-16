@@ -38,11 +38,14 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     let session = AVCaptureSession()
     /// Frames and everything derived from them are processed on this queue.
     let videoQueue = DispatchQueue(label: "me.raddatz.cindy.video", qos: .userInitiated)
+    /// Depth maps get their own queue: on `videoQueue` they queued behind slow Vision frames
+    /// and were discarded as late, for seconds whenever no face was found.
+    let depthQueue = DispatchQueue(label: "me.raddatz.cindy.depth", qos: .userInitiated)
 
     /// Called on `videoQueue` for every frame.
     var frameHandler: ((CMSampleBuffer) -> Void)?
 
-    /// Called on `videoQueue` for every TrueDepth depth map while depth is enabled.
+    /// Called on `depthQueue` for every TrueDepth depth map while depth is enabled.
     var depthHandler: ((AVDepthData, CMTime) -> Void)?
 
     /// Called on the main queue when frame delivery stops or comes back. Never
@@ -224,7 +227,7 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         // Raw depth: holes stay holes, so the valid share in the CSV is honest.
         depthOutput.isFilteringEnabled = false
         depthOutput.alwaysDiscardsLateDepthData = true
-        depthOutput.setDelegate(self, callbackQueue: videoQueue)
+        depthOutput.setDelegate(self, callbackQueue: depthQueue)
         if let best = device.activeFormat.supportedDepthDataFormats.max(by: {
             CMVideoFormatDescriptionGetDimensions($0.formatDescription).width
                 < CMVideoFormatDescriptionGetDimensions($1.formatDescription).width

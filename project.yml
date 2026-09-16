@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: me.raddatz
   deploymentTarget:
     iOS: "26.0"
-  xcodeVersion: "26.0"
+  xcodeVersion: "27.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
   groupSortPosition: top

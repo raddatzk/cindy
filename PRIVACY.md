@@ -12,7 +12,7 @@ point of law, the German version applies.
 ### 1. Controller
 
 Kevin Raddatz
-Email: kevin@raddatz.me
+Email: cindy@raddatz.me
 
 ### 2. The short version
 
@@ -172,7 +172,7 @@ erasure (Art. 17), restriction of processing (Art. 18), data portability
 have given at any time.
 
 In practice a request for access to me comes to nothing, because I hold no
-personal data about you. Please get in touch at kevin@raddatz.me anyway if you
+personal data about you. Please get in touch at cindy@raddatz.me anyway if you
 have questions.
 
 You can also lodge a complaint with a data protection supervisory authority.
@@ -198,7 +198,7 @@ date above states when it was last updated.
 ### 1. Verantwortlicher
 
 Kevin Raddatz
-E-Mail: kevin@raddatz.me
+E-Mail: cindy@raddatz.me
 
 ### 2. Das Wichtigste zuerst
 
@@ -368,7 +368,7 @@ eine erteilte Einwilligung jederzeit zu widerrufen.
 
 In der Praxis läuft eine Auskunftsanfrage an mich ins Leere, weil bei mir
 keine personenbezogenen Daten über dich vorliegen. Melde dich trotzdem gern
-unter kevin@raddatz.me, wenn du Fragen hast.
+unter cindy@raddatz.me, wenn du Fragen hast.
 
 Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren.
 Zuständig ist die Behörde deines Wohnsitzes.

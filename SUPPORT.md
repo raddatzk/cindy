@@ -6,7 +6,7 @@
 
 ### Contact
 
-Write to **kevin@raddatz.me**. If you have a GitHub account, you can also
+Write to **cindy@raddatz.me**. If you have a GitHub account, you can also
 [open an issue](https://github.com/raddatzk/cindy/issues).
 
 If Cindy counted wrong, please say which exercise it was, how many reps you did
@@ -74,7 +74,7 @@ Connect stay there and can be removed in the Health app or in Health Connect. No
 
 ### Kontakt
 
-Schreib an **kevin@raddatz.me**. Mit einem GitHub-Konto kannst du auch ein
+Schreib an **cindy@raddatz.me**. Mit einem GitHub-Konto kannst du auch ein
 [Issue anlegen](https://github.com/raddatzk/cindy/issues).
 
 Wenn Cindy falsch gezählt hat, nenn bitte die Übung, wie viele Wiederholungen du

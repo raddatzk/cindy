@@ -86,6 +86,7 @@ final class CalibrationEngine {
             return
         }
         audio.prepare()
+        processor.prepareDepth(for: exercises.map { config.source(for: $0) })
         camera.start()
         cameraRunning = true
         UIApplication.shared.isIdleTimerDisabled = true
@@ -184,7 +185,7 @@ final class CalibrationEngine {
     }
 
     private func handle(observation: FrameObservation, output: PipelineOutput?) {
-        subjectDetected = Self.subjectDetected(in: observation, source: trackedSource)
+        subjectDetected = Self.subjectDetected(in: observation, source: trackedSource, config: config)
         liveValue = output?.smoothed
         guard case .capturing(let exercise) = step, let output else { return }
         if captureStart == nil { captureStart = observation.timestamp }
@@ -210,12 +211,17 @@ final class CalibrationEngine {
         }
     }
 
-    /// Face for the face signal; otherwise any body (pose, or the face next to the brightness).
-    static func subjectDetected(in observation: FrameObservation, source: SignalSource) -> Bool {
+    /// Face for the face signal; otherwise any body (pose, or the face next to the brightness, or
+    /// the face or something close to the phone in the depth map).
+    static func subjectDetected(in observation: FrameObservation, source: SignalSource,
+                                config: SignalConfig = .default) -> Bool {
         switch source {
         case .face: return observation.face != nil
         case .pose: return observation.pose != nil
         case .brightness: return observation.face != nil || observation.pose != nil
+        case .depth:
+            guard observation.face == nil else { return true }
+            return observation.depth?.p05.map { $0 <= config.depthPresenceDistance } ?? false
         }
     }
 

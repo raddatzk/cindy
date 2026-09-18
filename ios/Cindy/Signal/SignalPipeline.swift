@@ -18,7 +18,7 @@ struct PipelineOutput: Equatable, Sendable {
     var thresholds: RepThresholds? = nil
 }
 
-/// Extractor → (median for pose) → EMA smoothing → Schmitt-trigger rep detector for one exercise;
+/// Extractor → (median for pose and depth) → EMA smoothing → Schmitt-trigger rep detector for one exercise;
 /// brightness reps additionally need `BodyEvidence`.
 /// Not thread-safe; call `process` from a single queue.
 final class SignalPipeline {
@@ -53,7 +53,7 @@ final class SignalPipeline {
         self.source = source
         self.extractor = extractor
         self.ema = EMAFilter(alpha: config.emaAlpha)
-        self.median = source == .pose ? MedianFilter(window: config.poseMedianWindow) : nil
+        self.median = source == .pose || source == .depth ? MedianFilter(window: config.poseMedianWindow) : nil
         if let holdSeconds {
             self.holdDetector = HoldDetector(thresholds: thresholds, targetSeconds: holdSeconds, config: config)
             self.detector = nil

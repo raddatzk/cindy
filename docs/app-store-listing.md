@@ -103,7 +103,9 @@ it on can be added afterwards.
 
 WHAT YOU NEED
 An iPhone with Face ID, a pull-up bar, and a bit of floor. No watch, no chest
-strap, no equipment beyond the bar.
+strap, no equipment beyond the bar. Cindy measures push-ups and squats with the
+Face ID camera's depth sensor; on iPhones without Face ID it counts from the
+camera picture alone, which is less reliable.
 
 Cindy is a training aid, not a medical device. The readiness estimate is a
 rough guide built from training-science rules of thumb, not a diagnosis, and it
@@ -181,7 +183,9 @@ vor dem Einschalten kannst du nachtragen.
 
 WAS DU BRAUCHST
 Ein iPhone mit Face ID, eine Klimmzugstange und etwas Platz auf dem Boden. Keine
-Uhr, kein Brustgurt, kein Gerät außer der Stange.
+Uhr, kein Brustgurt, kein Gerät außer der Stange. Liegestütze und Kniebeugen misst
+Cindy mit dem Tiefensensor der Face-ID-Kamera; auf iPhones ohne Face ID zählt sie
+nur anhand des Kamerabilds, und das ist weniger zuverlässig.
 
 Cindy ist eine Trainingshilfe und kein Medizinprodukt. Die Bereitschaftsanzeige
 ist ein grober Anhaltspunkt aus trainingswissenschaftlichen Faustregeln, keine
@@ -223,10 +227,11 @@ Written in English; App Store Connect has one review-notes field, not one per
 language.
 
 The desk-test recipe below follows from how the signals work — bringing the
-phone closer makes the face bounding box grow (pull-ups, push-ups, plank) and
-darkens the picture while the face grows (squats: brightness with the face as
-a plausibility check), which is the same shape as a rep — but it has not been
-run on a device yet. Confirm it during the device
+phone closer shortens the TrueDepth distance (push-ups, squats, plank on phones
+with Face ID) and makes the face bounding box grow (pull-ups; push-ups and plank
+without Face ID), and darkens the picture while the face grows (squats without
+Face ID: brightness with the face as a plausibility check), which is the same
+shape as a rep — but it has not been run on a device yet. Confirm it during the device
 test before submitting: review notes that do not work are how a submission ends
 up rejected under guideline 2.1.
 
@@ -246,17 +251,23 @@ push-ups:
    the counter advances, and a higher tone marks the exercise change after the
    configured number of reps.
 
-For pull-ups and push-ups the signal is how large your face appears in the
-frame. For squats it is how dark the picture gets, accepted only when your face
-grows at the same time. Moving the phone closer does both, which is why it
-behaves exactly like a rep. Reviewing from a chair works.
+On an iPhone with Face ID, push-ups, squats and the plank are measured with the
+TrueDepth camera's depth map: how far away the nearest body is. For pull-ups the
+signal is how large your face appears in the frame. On iPhones without Face ID,
+push-ups use the face size as well and squats how dark the picture gets,
+accepted only when your face grows at the same time. Moving the phone closer
+does all of that, which is why it behaves exactly like a rep. Reviewing from a
+chair works.
 
 WHAT THE APP DOES WITH THE CAMERA
 
 The camera feed is analysed frame by frame on the device using the Vision
-framework. Nothing is stored, recorded or transmitted; each frame is reduced to
-a few numbers (face bounding-box area, shoulder and nose positions, mean image
-brightness) and discarded. There is no account, no
+framework, and on iPhones with Face ID the TrueDepth depth map as well. Nothing
+is stored, recorded or transmitted; each frame is reduced to a few numbers (face
+bounding-box area, shoulder and nose positions, mean image brightness, a few
+distances in metres from the depth map) and discarded. The depth map is not
+used for Face ID, face recognition or any face mesh, only for how far away the
+body is. There is no account, no
 network code and no analytics in the app.
 
 EXERCISE DEMOS

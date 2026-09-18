@@ -108,9 +108,18 @@ struct PipelineReplayTests {
             .thresholds.isRelative == false)
     }
 
-    @Test func squatsUseBrightnessByDefault() {
-        #expect(SignalConfig.default.source(for: .squat) == .brightness)
-        #expect(SignalConfig.default.source(for: .pushUp) == .face)
+    @Test func squatsPushUpsAndPlankUseDepthWhereThePhoneHasIt() {
+        var withDepth = SignalConfig.default
+        withDepth.hasDepthCamera = true
+        #expect(withDepth.source(for: .squat) == .depth)
+        #expect(withDepth.source(for: .pushUp) == .depth)
+        #expect(withDepth.source(for: .plank) == .depth)
+        #expect(withDepth.source(for: .pullUp) == .face)
+        var withoutDepth = SignalConfig.default
+        withoutDepth.hasDepthCamera = false
+        #expect(withoutDepth.source(for: .squat) == .brightness)
+        #expect(withoutDepth.source(for: .pushUp) == .face)
+        #expect(withoutDepth.source(for: .plank) == .face)
     }
 
     @Test func medianRemovesSingleFrameOutliers() {

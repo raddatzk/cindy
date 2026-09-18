@@ -25,7 +25,19 @@ struct SignalExtractor: Sendable {
         case .face: return faceSignal(observation, for: exercise)
         case .pose: return poseSignal(observation, for: exercise)
         case .brightness: return brightnessSignal(observation)
+        case .depth: return depthSignal(observation, for: exercise)
         }
+    }
+
+    /// Median TrueDepth distance in metres; the nearest depths when the map is mostly holes because
+    /// the athlete is closer than the camera measures. A plank also needs the face: standing up next
+    /// to the phone is barely farther away than the plank itself.
+    func depthSignal(_ observation: FrameObservation, for exercise: Exercise) -> SignalSample {
+        guard let depth = observation.depth, abs(depth.age ?? 0) <= config.depthMaxAge else { return .missing(.depth) }
+        let distance = depth.validFraction >= config.depthMinValidFraction ? depth.median : depth.p05
+        guard let distance else { return .missing(.depth) }
+        let confidence = exercise.isHold ? observation.face?.confidence ?? 0 : 1
+        return SignalSample(value: distance, confidence: confidence, source: .depth)
     }
 
     /// Mean image brightness; always confident when measured.
@@ -56,13 +68,14 @@ struct SignalExtractor: Sendable {
         return SignalSample(value: result.value, confidence: result.confidence, source: .pose)
     }
 
-    /// How calibrated thresholds follow the rest level: sizes in the image scale with the
-    /// distance to the phone, brightness shifts. Image heights and a face-y mix stay absolute (nil).
+    /// How calibrated thresholds follow the rest level: sizes in the image and depth distances scale
+    /// with where the athlete is, brightness shifts. Image heights and a face-y mix stay absolute (nil).
     func restAdaptation(for exercise: Exercise, source: SignalSource) -> RestAdaptation? {
         switch source {
         case .face: return config.faceYWeight(for: exercise) == 0 ? .scale : nil
         case .pose: return exercise == .squat ? .scale : nil
         case .brightness: return .shift
+        case .depth: return .scale
         }
     }
 }

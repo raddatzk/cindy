@@ -110,6 +110,7 @@
 "No person" = "Keine Person";
 "Body Pose" = "Body Pose";
 "Brightness" = "Helligkeit";
+"Depth" = "Tiefe";
 "Waiting for start position" = "Warte auf Ausgangsposition";
 "Hold" = "Halten";
 "Counting" = "Zählt";
@@ -260,3 +261,4 @@
 "Move up" = "Nach oben";
 "Move down" = "Nach unten";
 "Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.";
+"This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep." = "Dieses iPhone hat keine Face-ID-Kamera, deshalb zählt Cindy nur anhand des Kamerabilds. Das ist weniger zuverlässig; korrigiere mit +1 und −1, wenn eine Wiederholung fehlt.";

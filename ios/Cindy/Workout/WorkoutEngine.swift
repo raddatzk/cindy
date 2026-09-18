@@ -114,6 +114,7 @@ final class WorkoutEngine {
             return
         }
         audio.prepare()
+        processor.prepareDepth(for: profile.exercises.values.map(\.source))
         // Created only once the workout really starts, so aborted setups leave no empty files.
         if logToCSV, let logger = try? FrameLogger(label: "workout") {
             self.logger = logger
@@ -274,7 +275,7 @@ final class WorkoutEngine {
     }
 
     private func handle(observation: FrameObservation, output: PipelineOutput?) {
-        subjectDetected = CalibrationEngine.subjectDetected(in: observation, source: trackedSource)
+        subjectDetected = CalibrationEngine.subjectDetected(in: observation, source: trackedSource, config: config)
         liveValue = output?.smoothed
         guard let output, machine.isRunning else { return }
         // Ignore stale frames from a pipeline that has already been replaced.

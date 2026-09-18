@@ -70,6 +70,12 @@ struct OnboardingView: View {
             Label(L("Every frame is analyzed on the iPhone and discarded right away. No photos, no video, no internet connection."), systemImage: "lock.shield")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            if !CameraSession.hasDepthCamera {
+                // No TrueDepth camera (iPhone SE, iPhone Duo): counting falls back to the picture alone.
+                Label(L("This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep."), systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         } illustration: {
             CountingPhoneIcon()
         }

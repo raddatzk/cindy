@@ -61,14 +61,14 @@ struct RepThresholds: Codable, Equatable, Sendable {
     /// Thresholds measured from the rest level instead of the cycle extremes: the rep leaves
     /// rest after `leave` of the swing towards `extreme` and peaks after `peak` of it. Used
     /// where a rep overshoots past rest on the way back (brightness), which would otherwise
-    /// put the rest-side threshold beyond the rest level itself.
+    /// put the rest-side threshold beyond the rest level itself, or where reps vary in depth (depth).
     static func fromRest(baseline: Float, extreme: Float, direction: RepDirection,
-                         leave: Float, peak: Float) -> RepThresholds {
+                         leave: Float, peak: Float, adaptation: RestAdaptation = .shift) -> RepThresholds {
         let swing = extreme - baseline
         let leaveValue = baseline + leave * swing
         let peakValue = baseline + peak * swing
         return RepThresholds(low: min(leaveValue, peakValue), high: max(leaveValue, peakValue), direction: direction,
-                             baseline: baseline, adaptation: .shift)
+                             baseline: baseline, adaptation: adaptation)
     }
 
     /// Derives thresholds from the observed signal extremes:

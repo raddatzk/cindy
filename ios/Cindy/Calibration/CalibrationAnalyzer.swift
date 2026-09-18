@@ -84,7 +84,8 @@ struct CalibrationAnalyzer: Sendable {
         let mean = values.reduce(0, +) / Float(values.count)
         let observedMin = values.min() ?? mean
         let observedMax = values.max() ?? mean
-        let halfBand = Swift.max((observedMax - observedMin) / 2, config.calibrationHoldBandMargin * abs(mean))
+        let margin = source == .depth ? config.depthHoldBandMargin : config.calibrationHoldBandMargin
+        let halfBand = Swift.max((observedMax - observedMin) / 2, margin * abs(mean))
         return ExerciseCalibration(
             source: source, minValue: observedMin, maxValue: observedMax, baseline: mean,
             low: mean - halfBand, high: mean + halfBand, direction: .peak,
@@ -106,7 +107,8 @@ struct CalibrationAnalyzer: Sendable {
 
     // MARK: - Internals
 
-    private var noSubject: CalibrationFailure { source == .face ? .noFace : .noPerson }
+    /// The depth signal's plank needs the face; without depth maps at all there is no better hint.
+    private var noSubject: CalibrationFailure { source == .face || source == .depth ? .noFace : .noPerson }
 
     struct TraceStats {
         var baseline: Float
@@ -136,7 +138,7 @@ struct CalibrationAnalyzer: Sendable {
         let down = baseline - minValue
         let required: Float
         switch source {
-        case .face: required = Swift.max(config.calibrationMinRelativeExcursion * abs(baseline), 1e-4)
+        case .face, .depth: required = Swift.max(config.calibrationMinRelativeExcursion * abs(baseline), 1e-4)
         case .pose: required = config.calibrationMinAbsoluteExcursion
         case .brightness: required = config.calibrationMinBrightnessExcursion
         }
@@ -149,6 +151,13 @@ struct CalibrationAnalyzer: Sendable {
             thresholds = RepThresholds.fromRest(baseline: baseline, extreme: direction == .peak ? maxValue : minValue,
                                                 direction: direction, leave: config.restAnchoredLeave,
                                                 peak: config.restAnchoredPeak)
+        } else if source == .depth {
+            // Anchored to the rest distance like brightness, with a lower bar: a squat shallower than
+            // the calibration one still has to count.
+            direction = up >= down ? .peak : .trough
+            thresholds = RepThresholds.fromRest(baseline: baseline, extreme: direction == .peak ? maxValue : minValue,
+                                                direction: direction, leave: config.depthRestLeave,
+                                                peak: config.depthRestPeak, adaptation: .scale)
         } else {
             direction = up >= down ? .peak : .trough
             thresholds = RepThresholds.from(min: minValue, max: maxValue, direction: direction,

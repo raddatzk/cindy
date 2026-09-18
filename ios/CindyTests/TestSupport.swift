@@ -108,8 +108,8 @@ enum CSVSignalReplay {
         }
     }
 
-    /// Rebuilds full frames (face box, shoulder width, brightness) so a replay also exercises
-    /// `BodyEvidence`. `lumaOffset` simulates a brighter or darker scene.
+    /// Rebuilds full frames (face box, shoulder width, brightness, depth) so a replay also exercises
+    /// `BodyEvidence` and the depth signal. `lumaOffset` simulates a brighter or darker scene.
     static func observations(_ url: URL, lumaOffset: Float = 0) throws -> [FrameObservation] {
         let text = try String(contentsOf: url, encoding: .utf8)
         var lines = text.split(separator: "\n").map(String.init)
@@ -136,6 +136,12 @@ enum CSVSignalReplay {
             }
             if let luma = value("luma_mean") {
                 observation.metrics = FrameMetrics(lumaMean: luma + lumaOffset, lumaCenter: value("luma_center"))
+            }
+            if let valid = value("depth_valid") {
+                observation.depth = DepthMetrics(validFraction: valid, p05: value("depth_p05"), p10: value("depth_p10"),
+                                                 median: value("depth_median"), centerMedian: value("depth_center"),
+                                                 grid: (0..<9).map { value("depth_g\($0)") },
+                                                 age: value("depth_age").map { TimeInterval($0) })
             }
             return observation
         }

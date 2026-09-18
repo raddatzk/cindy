@@ -32,9 +32,11 @@ for permission for this the first time it starts.
 
 The analysis runs **entirely on the device** – on iPhone in Apple's Vision
 framework, on Android in Google's open-source MediaPipe library, whose models
-ship inside the app. Each camera frame is reduced to a few numbers – how large
-your face appears, where your shoulders are, how bright the picture is – from
-which the app detects movement. The frames themselves are
+ship inside the app. On iPhones with Face ID, Cindy also reads the depth map of
+the front (TrueDepth) camera; it is not used to recognise you, only to measure how
+far away your body is. Each camera frame is reduced to a few numbers – how large
+your face appears, where your shoulders are, how bright the picture is, how far
+away the nearest body is – from which the app detects movement. The frames themselves are
 **neither stored nor transmitted**; they exist only for the fraction of a second
 in memory in which they are processed. No video or photo file is created.
 

@@ -196,7 +196,12 @@ private struct DebugScreen: View {
 @Observable
 final class DebugEngine {
     var exercise: Exercise = .pushUp { didSet { rebuildPipeline() } }
-    var source: SignalSource = .face { didSet { rebuildPipeline() } }
+    var source: SignalSource = .face {
+        didSet {
+            if source == .depth, !depth { depth = true } // the depth signal needs the stream
+            rebuildPipeline()
+        }
+    }
     /// Runs body pose next to the face even when the face is the signal (CSV comparisons).
     var bodyPose = false { didSet { updateDetection() } }
     /// Streams the TrueDepth depth map and logs its distances (does anything move, not just a face?).
@@ -277,7 +282,7 @@ final class DebugEngine {
     func startRecording() {
         guard !isRecording else { return }
         do {
-            let logger = try FrameLogger(label: "\(exercise.rawValue)_\(source.rawValue)\(depth ? "_depth" : "")")
+            let logger = try FrameLogger(label: "\(exercise.rawValue)_\(source.rawValue)\(depth && source != .depth ? "_depth" : "")")
             self.logger = logger
             processor.setLogger(logger, stateProvider: { "debug" })
             isRecording = true
@@ -313,7 +318,7 @@ final class DebugEngine {
 
     /// The face always runs in the debug mode, so its drop-outs stay visible in recordings.
     private func updateDetection() {
-        processor.setDetection(face: true, bodyPose: bodyPose || source != .face)
+        processor.setDetection(face: true, bodyPose: bodyPose || source == .pose || source == .brightness)
     }
 
     private func updateDepth() {

@@ -21,6 +21,7 @@
 "Back to start" = "Back to start";
 "Body Pose" = "Body Pose";
 "Brightness" = "Brightness";
+"Depth" = "Depth";
 "Apply" = "Apply";
 "Calibrate" = "Calibrate";
 "Calibrate in your workout clothes, without a cap or hood." = "Calibrate in your workout clothes, without a cap or hood.";
@@ -235,3 +236,4 @@
 "Move up" = "Move up";
 "Move down" = "Move down";
 "Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score.";
+"This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep." = "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep.";

@@ -49,10 +49,21 @@ final class FrameProcessor {
         }
     }
 
-    /// Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`.
+    /// Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`,
+    /// depth keeps the face for the plank and the on-screen indicator.
     func setDetection(for source: SignalSource) {
-        setDetection(face: source != .pose, bodyPose: source != .face)
+        setDetection(face: source != .pose, bodyPose: source == .pose || source == .brightness)
         setMetricsEnabled(source == .brightness)
+        setDepthEnabled(source == .depth)
+        if source == .depth { prepareDepth(for: [source]) }
+    }
+
+    /// Adds the depth stream to the configured camera when any of `sources` needs it. Switching the
+    /// camera to a depth format interrupts the frames briefly, so call it before a countdown rather than
+    /// between exercises; once added the stream stays (frames without a depth source ignore it).
+    func prepareDepth(for sources: [SignalSource]) {
+        guard sources.contains(.depth) else { return }
+        camera.setDepthEnabled(true)
     }
 
     /// Measures the `FrameMetrics` (brightness) per frame.
@@ -60,7 +71,7 @@ final class FrameProcessor {
         camera.videoQueue.async { self.measuresMetrics = enabled }
     }
 
-    /// Attaches the latest TrueDepth metrics to every frame (debug recorder only).
+    /// Attaches the latest TrueDepth metrics to every frame (depth signal, debug recorder).
     func setDepthEnabled(_ enabled: Bool) {
         measuresDepth.set(enabled)
         latestDepth.set(nil)

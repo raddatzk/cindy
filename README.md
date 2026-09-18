@@ -65,26 +65,42 @@ every screen and permission flow can be walked through.
 Front camera (30 fps, exposure locked after 2 s)
   → VisionProcessor      VNDetectFaceRectanglesRequest and/or VNDetectHumanBodyPoseRequest, per exercise;
                          each keeps its own orientation search (the phone lies flat)
-  → FrameMetrics         mean brightness of the frame (squats)
+  → FrameMetrics         mean brightness of the frame (squats without TrueDepth)
+  → DepthMetrics         TrueDepth distances: valid share, percentiles, median (squats, push-ups, plank)
   → SignalExtractor      one Float per frame for the expected exercise (+ confidence)
-  → MedianFilter         5 samples, body pose only (single-frame outliers)
+  → MedianFilter         5 samples, body pose and depth only (single-frame outliers)
   → EMAFilter            alpha 0.3 per 30 fps frame, scaled to the frame interval
   → RepDetector          Schmitt trigger (low / high), rep duration 0.5–5 s, arming debounce of 10 frames
                          at 30 fps (or ≥ 3 samples spanning 0.3 s),
-                         thresholds relative to the rest level (scaled for sizes, shifted for brightness),
+                         thresholds relative to the rest level (scaled for sizes and distances, shifted for brightness),
                          BodyEvidence veto for brightness reps
   → WorkoutStateMachine  exercise, rep counter, round, transitions
   → WorkoutEngine        20-minute clock, audio feedback, UI state
 ```
 
-| Exercise | Default source | `.face` signal                  | `.pose` signal       | `.brightness`    | Rest position |
-|----------|----------------|---------------------------------|----------------------|------------------|---------------|
-| Push-up  | `.face`        | face bounding-box area          | nose y               | mean luma        | arms extended |
-| Squat    | `.brightness`  | face area (+ optional centre-y) | shoulder width       | mean luma        | standing      |
-| Pull-up  | `.face`        | face area (+ optional centre-y) | shoulder y           | mean luma        | dead hang     |
-| Plank    | `.face`        | face area held inside a band    | nose y               | mean luma        | plank         |
+| Exercise | Default source (no TrueDepth) | `.face` signal                  | `.pose` signal | `.brightness` | `.depth`                  | Rest position |
+|----------|-------------------------------|---------------------------------|----------------|---------------|---------------------------|---------------|
+| Push-up  | `.depth` (`.face`)            | face bounding-box area          | nose y         | mean luma     | median distance           | arms extended |
+| Squat    | `.depth` (`.brightness`)      | face area (+ optional centre-y) | shoulder width | mean luma     | median distance           | standing      |
+| Pull-up  | `.face`                       | face area (+ optional centre-y) | shoulder y     | mean luma     | median distance           | dead hang     |
+| Plank    | `.depth` (`.face`)            | face area held inside a band    | nose y         | mean luma     | distance band + face seen | plank         |
 
-Squats count on the brightness since the device recordings of 2026-09-14
+On phones with a TrueDepth front camera, squats, push-ups and the plank count on the
+depth map since the recordings of 2026-09-17 (`shared/fixtures/recorded_*_depth.csv`).
+The signal is the median distance of the whole map: standing ~1.3 m, 0.4–0.75 m at
+the bottom of every squat whichever way the athlete looks. At the bottom of a push-up
+the athlete is closer than the camera measures and most of the map is holes; below
+50 % valid pixels the signal is the 5th percentile instead (~0.16 m). Depth thresholds
+hang off the rest distance (leave at 25 %, peak at 50 % of the calibrated swing), so a
+squat shallower than the calibration one still counts, and scale with the rest distance
+like face sizes. The plank only holds while the face is also seen: getting up next to
+the phone is barely farther away than the plank. Phones without TrueDepth (the iPhone SE
+and the iPhone Duo, which has Touch ID) cannot be excluded from the App Store — there is
+no required device capability for it — so they keep the face for push-ups and plank and
+the brightness for squats, and the intro tells them counting is less reliable there. The
+Android app has no depth either.
+
+Without TrueDepth, squats count on the brightness since the device recordings of 2026-09-14
 (`shared/fixtures/recorded_squats_*`): from the floor the face is only found
 while the athlete looks down, and the body pose drops out at the bottom of every
 squat when looking ahead. The body darkens the picture the lower it gets, whichever

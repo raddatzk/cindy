@@ -73,6 +73,9 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
         observers.forEach(NotificationCenter.default.removeObserver)
     }
 
+    /// Whether the front camera is a TrueDepth camera (false in the simulator).
+    static let hasDepthCamera = AVCaptureDevice.default(.builtInTrueDepthCamera, for: .video, position: .front) != nil
+
     // MARK: - Authorisation
 
     static func requestAccess() async -> Bool {
@@ -186,9 +189,9 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
     // MARK: - Depth
 
-    /// Adds or removes the TrueDepth depth stream (debug recorder only). Returns a short
-    /// description of the active depth format, or why there is none, on the main queue.
-    func setDepthEnabled(_ enabled: Bool, completion: @escaping (String) -> Void) {
+    /// Adds or removes the TrueDepth depth stream. Returns a short description of the active
+    /// depth format, or why there is none, on the main queue (debug recorder).
+    func setDepthEnabled(_ enabled: Bool, completion: @escaping (String) -> Void = { _ in }) {
         sessionQueue.async {
             let status = self.setDepthEnabledLocked(enabled)
             DispatchQueue.main.async { completion(status) }

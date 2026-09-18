@@ -69,8 +69,12 @@ data class WorkoutState(
     val countdownValue: Int = 0,
     val isSignalArmed: Boolean = false,
     val trackedSource: SignalSource = SignalSource.FACE,
-    /** Accumulated plank time of the current hold (null for rep exercises). */
+    /** Time held in the plank after the AMRAP (null before it). */
     val heldSeconds: Double? = null,
+    /** Counts down after the athlete tapped start on the plank; `null` when none is running. */
+    val holdCountdown: Int? = null,
+    /** Whether the plank clock runs. */
+    val isPlankRunning: Boolean = false,
     val error: WorkoutError? = null,
     /**
      * Set while the camera is away ("The camera was interrupted. Cindy counts itself back in as
@@ -142,6 +146,9 @@ class WorkoutEngine(
     private var segmentStartMillis: Long? = null
     private var countdownJob: Job? = null
     private var resumeJob: Job? = null
+    private var holdCountdownJob: Job? = null
+    private var plankJob: Job? = null
+    private var plankStartMillis: Long? = null
 
     /**
      * Whether the current pause is one the interruption caused rather than one the athlete asked
@@ -162,9 +169,9 @@ class WorkoutEngine(
         frameSource.onAvailabilityChange = { availability -> scope.launch { handle(availability) } }
     }
 
-    /** Exercises that can join the plan mid-workout: only calibrated ones can be counted. */
+    /** Exercises that can join the plan mid-workout: only calibrated ones can be counted; holds need none. */
     val calibratedExercises: List<Exercise>
-        get() = Exercise.entries.filter { profile.calibration(it) != null }
+        get() = Exercise.entries.filter { !it.needsCalibration || profile.calibration(it) != null }
 
     /** Shortest AMRAP length (minutes) the clock has not passed yet. */
     val shortestDurationAhead: Int
@@ -229,6 +236,40 @@ class WorkoutEngine(
         sync()
     }
 
+    /**
+     * The athlete is in the plank and tapped start: a short countdown, then the clock runs until
+     * the plank's target (or until they tap finish), and the workout is over.
+     */
+    fun startPlank() {
+        if (machine.phase != WorkoutPhase.PLANK || plankStartMillis != null || holdCountdownJob != null) return
+        audio.prepare()
+        holdCountdownJob = scope.launch {
+            for (remaining in config.holdCountdownSeconds downTo 1) {
+                _state.update { it.copy(holdCountdown = remaining) }
+                audio.beep()
+                delay(1_000)
+            }
+            _state.update { it.copy(holdCountdown = null) }
+            holdCountdownJob = null
+            if (machine.phase != WorkoutPhase.PLANK) return@launch
+            audio.goSignal()
+            plankStartMillis = monotonicMillis()
+            _state.update { it.copy(isPlankRunning = true) }
+            plankJob = scope.launch {
+                while (true) {
+                    delay(TICK_MILLIS)
+                    tickPlank()
+                }
+            }
+        }
+    }
+
+    /** Ends the plank before its target; the time held so far is recorded. */
+    fun finishPlank() {
+        if (machine.phase != WorkoutPhase.PLANK) return
+        finishWorkout(completed = true)
+    }
+
     fun resume() {
         if (machine.phase != WorkoutPhase.PAUSED || _state.value.cameraInterrupted) return
         cancelAutoResume()
@@ -247,7 +288,8 @@ class WorkoutEngine(
         if (phase == WorkoutPhase.FINISHED || phase == WorkoutPhase.IDLE) return
         cancelAutoResume()
         countdownJob?.cancel()
-        finishWorkout(completed = false)
+        // Stopping during the plank ends it early; the AMRAP itself was complete.
+        finishWorkout(completed = machine.phase == WorkoutPhase.PLANK)
     }
 
     /** Manual +1 / −1 correction. */
@@ -283,6 +325,7 @@ class WorkoutEngine(
         isClosed = true
         cancelAutoResume()
         countdownJob?.cancel()
+        stopPlank()
         stopClock()
         teardown()
         audio.release()
@@ -315,17 +358,50 @@ class WorkoutEngine(
             thresholds = calibration.thresholds,
             source = calibration.source,
             config = config,
-            holdSeconds = if (exercise.isHold) plan.target(exercise).toDouble() else null,
         )
         frameSource.setDetection(calibration.source)
         frameSource.setPipeline(pipeline)
-        _state.update {
-            it.copy(
-                trackedSource = calibration.source,
-                isSignalArmed = false,
-                heldSeconds = if (exercise.isHold) 0.0 else null,
-            )
+        _state.update { it.copy(trackedSource = calibration.source, isSignalArmed = false) }
+    }
+
+    /**
+     * The AMRAP clock ran out. With a plank in the plan the camera stops and the plank waits for
+     * the athlete's start; otherwise the workout is over.
+     */
+    private fun endAmrap() {
+        if (!plan.hasPlank) {
+            finishWorkout(completed = true)
+            return
         }
+        stopClock()
+        frameSource.setPipeline(null)
+        stopCamera()
+        machine.beginPlank()
+        _state.update { it.copy(elapsed = plan.duration, heldSeconds = 0.0) }
+        audio.endSignal()
+        sync()
+    }
+
+    private fun stopPlank() {
+        holdCountdownJob?.cancel()
+        holdCountdownJob = null
+        plankJob?.cancel()
+        plankJob = null
+        _state.update { it.copy(holdCountdown = null, isPlankRunning = false) }
+    }
+
+    /** Advances the plank clock; beeps every 10 s and ends the workout at the target. */
+    private fun tickPlank() {
+        val start = plankStartMillis ?: return
+        if (machine.phase != WorkoutPhase.PLANK) return
+        val held = (monotonicMillis() - start) / 1_000.0
+        val target = plan.target(Exercise.PLANK)
+        val previous = (_state.value.heldSeconds ?: 0.0).toInt()
+        _state.update { it.copy(heldSeconds = held) }
+        if (held.toInt() / 10 > previous / 10 && held.toInt() < target) {
+            audio.beep() // every 10 s of plank
+        }
+        if (held >= target) finishWorkout(completed = true)
     }
 
     /**
@@ -396,14 +472,6 @@ class WorkoutEngine(
         // Ignore stale frames from a pipeline that has already been replaced.
         if (output.exercise != machine.exercise) return
         _state.update { it.copy(isSignalArmed = output.isArmed) }
-        val held = output.heldSeconds
-        if (held != null) {
-            val previous = (_state.value.heldSeconds ?: 0.0).toInt()
-            _state.update { it.copy(heldSeconds = held) }
-            if (held.toInt() / 10 > previous / 10 && held.toInt() < plan.target(output.exercise)) {
-                audio.beep() // every 10 s of plank
-            }
-        }
         when (output.event) {
             RepDetectorEvent.Armed -> if (machine.phase == WorkoutPhase.TRANSITION) apply(machine.activate())
             is RepDetectorEvent.RepCompleted -> {
@@ -433,7 +501,7 @@ class WorkoutEngine(
         _state.update {
             it.copy(
                 phase = machine.phase,
-                exercise = machine.exercise,
+                exercise = if (machine.phase == WorkoutPhase.PLANK) Exercise.PLANK else machine.exercise,
                 nextExercise = plan.next(machine.exercise),
                 repCount = machine.repCount,
                 currentRound = machine.currentRound,
@@ -475,11 +543,13 @@ class WorkoutEngine(
         if (segmentStartMillis == null) return
         val elapsed = currentElapsed()
         _state.update { it.copy(elapsed = elapsed) }
-        if (plan.duration - elapsed <= 0) finishWorkout(completed = true)
+        if (plan.duration - elapsed <= 0) endAmrap()
     }
 
     private fun finishWorkout(completed: Boolean) {
+        stopPlank()
         stopClock()
+        val reachedPlank = machine.phase == WorkoutPhase.PLANK
         val events = machine.finish()
         if (events.isEmpty() && _state.value.result != null) return
         frameSource.setPipeline(null)
@@ -495,6 +565,7 @@ class WorkoutEngine(
             repsPerRound = plan.repsPerRound,
             roundTimestamps = roundTimestamps.toList(),
             plan = plan,
+            plankSeconds = if (reachedPlank) (_state.value.heldSeconds ?: 0.0).toInt() else null,
         )
         _state.update { it.copy(result = record) }
         if (completed) audio.endSignal()
@@ -503,12 +574,17 @@ class WorkoutEngine(
     }
 
     private fun teardown() {
+        stopCamera()
+        _keepScreenOn.value = false
+    }
+
+    /** Stops the camera and closes the CSV; the screen stays on for the plank. */
+    private fun stopCamera() {
         if (!cameraRunning) return
         frameSource.stop()
         cameraRunning = false
         frameSource.setLogger(null)
         logger?.close()
-        _keepScreenOn.value = false
     }
 
     private companion object {

@@ -86,35 +86,6 @@ class CalibrationAnalyzer(
         )
     }
 
-    /**
-     * Hold calibration (plank): after `calibrationHoldDuration` seconds of confident samples the
-     * band is the observed min/max widened by `calibrationHoldBandMargin` of the mean (at least
-     * the observed spread).
-     */
-    fun evaluateHold(trace: List<CalibrationSample>): ExerciseCalibration? {
-        val first = trace.firstOrNull() ?: return null
-        val last = trace.last()
-        if (!(last.timestamp - first.timestamp >= config.calibrationHoldDuration &&
-                trace.size >= config.calibrationBaselineMinSamples)
-        ) {
-            return null
-        }
-        var sum = 0f
-        for (sample in trace) sum += sample.value
-        val mean = sum / trace.size.toFloat()
-        val observedMin = trace.minOf { it.value }
-        val observedMax = trace.maxOf { it.value }
-        val halfBand = maxOf((observedMax - observedMin) / 2, config.calibrationHoldBandMargin * abs(mean))
-        return ExerciseCalibration(
-            source = source, minValue = observedMin, maxValue = observedMax, baseline = mean,
-            low = mean - halfBand, high = mean + halfBand, direction = RepDirection.PEAK,
-            repDuration = config.calibrationHoldDuration, calibratedAt = clock.instant(),
-        )
-    }
-
-    fun diagnoseHold(trace: List<CalibrationSample>): CalibrationFailure =
-        if (trace.size < config.calibrationBaselineMinSamples) noSubject else CalibrationFailure.NoReturn
-
     /** Best explanation for why [evaluate] has not succeeded (used on timeout). */
     fun diagnose(trace: List<CalibrationSample>): CalibrationFailure {
         val stats = stats(trace) ?: return noSubject

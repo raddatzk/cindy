@@ -5,6 +5,7 @@ import me.raddatz.cindy.core.WorkoutPlan
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class WorkoutStateMachineTests {
@@ -206,11 +207,21 @@ class WorkoutStateMachineTests {
         val plan = WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true)
         machine.replacePlan(plan)
         machine.activate()
+        // The plank waits for the end of the AMRAP: the squats still complete the round.
         val events = (0 until 15).flatMap { machine.registerRep() }
-        assertFalse(events.contains(WorkoutEvent.RoundCompleted(1)))
-        assertEquals(Exercise.PLANK, machine.exercise)
-        machine.activate()
-        assertTrue(machine.registerRep().contains(WorkoutEvent.RoundCompleted(1)))
+        assertTrue(events.contains(WorkoutEvent.RoundCompleted(1)))
+        assertEquals(Exercise.PULL_UP, machine.exercise)
+    }
+
+    @Test
+    fun thePlankOnlyFollowsARunningWorkoutWithAPlank() {
+        val machine = machineInPushUps(0)
+        machine.beginPlank()
+        assertNotEquals(WorkoutPhase.PLANK, machine.phase) // Cindy has no plank
+        machine.replacePlan(WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true))
+        machine.beginPlank()
+        assertEquals(WorkoutPhase.PLANK, machine.phase)
+        assertFalse(machine.isRunning)
     }
 
     @Test

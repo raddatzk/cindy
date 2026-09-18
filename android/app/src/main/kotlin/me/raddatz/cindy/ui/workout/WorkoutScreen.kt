@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -35,6 +36,8 @@ import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -197,8 +200,8 @@ private fun WorkoutContent(
             ) {
                 TopBar(state, showPreview, onTogglePreview = { showPreview = !showPreview })
                 Spacer(Modifier.weight(1f))
-                Timer(state)
-                ExerciseBlock(state, reduceMotion)
+                if (state.phase == WorkoutPhase.PLANK) FinalScore(state) else Timer(state)
+                ExerciseBlock(state, reduceMotion, onStartPlank = engine::startPlank, onFinishPlank = engine::finishPlank)
                 Spacer(Modifier.weight(1f))
                 StatusLine(state, live)
                 if (showPreview) {
@@ -307,7 +310,7 @@ private fun TopBar(state: WorkoutState, showPreview: Boolean, onTogglePreview: (
             Icon(
                 if (showPreview) Icons.Filled.Videocam else Icons.Outlined.VideocamOff,
                 contentDescription = stringResource(
-                    if (showPreview) R.string.workout_hide_preview else R.string.workout_show_preview,
+                    if (showPreview) R.string.camera_hide_preview else R.string.camera_show_preview,
                 ),
             )
         }
@@ -339,8 +342,30 @@ private fun Timer(state: WorkoutState) {
     }
 }
 
+/** Once the AMRAP is over the clock has nothing left to say; the score is final. */
 @Composable
-private fun ExerciseBlock(state: WorkoutState, reduceMotion: Boolean) {
+private fun FinalScore(state: WorkoutState) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+    ) {
+        Text(
+            stringResource(R.string.workout_time_is_up),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FittingText(state.score.notation, maxSize = 72.sp, minScale = 0.5f, weight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ExerciseBlock(
+    state: WorkoutState,
+    reduceMotion: Boolean,
+    onStartPlank: () -> Unit,
+    onFinishPlank: () -> Unit,
+) {
     val exercise = state.exercise
     val target = state.plan.target(exercise)
     val name = stringResource(exercise.pluralNameRes)
@@ -376,6 +401,7 @@ private fun ExerciseBlock(state: WorkoutState, reduceMotion: Boolean) {
                 modifier = Modifier.widthIn(max = 240.dp).fillMaxWidth(),
                 color = CindyTheme.colors.brand,
             )
+            PlankControl(state, name, onStartPlank, onFinishPlank)
         }
         AnimatedVisibility(
             visible = state.phase == WorkoutPhase.TRANSITION,
@@ -403,7 +429,7 @@ private fun ExerciseBlock(state: WorkoutState, reduceMotion: Boolean) {
                 )
             }
         }
-        if (state.phase != WorkoutPhase.TRANSITION && state.plan.sets.size > 1) {
+        if (!exercise.isHold && state.phase != WorkoutPhase.TRANSITION && state.plan.sets.size > 1) {
             Text(
                 stringResource(R.string.workout_up_next, stringResource(state.nextExercise.pluralNameRes)),
                 style = MaterialTheme.typography.bodyMedium,
@@ -413,51 +439,65 @@ private fun ExerciseBlock(state: WorkoutState, reduceMotion: Boolean) {
     }
 }
 
+/** The plank runs on a timer: the athlete starts it once in position and may end it early. */
+@Composable
+private fun PlankControl(state: WorkoutState, name: String, onStart: () -> Unit, onFinish: () -> Unit) {
+    val countdown = state.holdCountdown
+    when {
+        countdown != null -> {
+            val description = stringResource(R.string.workout_starting_in, countdown)
+            BigNumber(
+                countdown,
+                maxSize = 56.sp,
+                modifier = Modifier.clearAndSetSemantics {
+                    contentDescription = description
+                    liveRegion = LiveRegionMode.Polite
+                },
+            )
+        }
+        !state.isPlankRunning -> BrandButton(
+            text = stringResource(R.string.workout_start_hold, name),
+            icon = Icons.Filled.PlayArrow,
+            onClick = onStart,
+        )
+        else -> SecondaryButton(
+            text = stringResource(R.string.workout_finish_hold, name),
+            icon = Icons.Filled.Check,
+            onClick = onFinish,
+        )
+    }
+}
+
 /** The color sits on the icons only; the icon and the words already change with the state. */
 @Composable
 private fun StatusLine(state: WorkoutState, live: LiveSignal) {
-    val detected = live.subjectDetected
-    val isFace = state.trackedSource == SignalSource.FACE
+    val isPlank = state.phase == WorkoutPhase.PLANK
     val status = when (state.phase) {
+        WorkoutPhase.PLANK -> stringResource(
+            when {
+                state.isPlankRunning -> R.string.workout_hold
+                state.holdCountdown == null -> R.string.workout_tap_start
+                else -> R.string.workout_get_ready
+            },
+        )
         WorkoutPhase.TRANSITION -> stringResource(R.string.workout_waiting_start)
         WorkoutPhase.ACTIVE -> stringResource(
-            when {
-                !state.isSignalArmed -> R.string.workout_signal_lost
-                state.exercise.isHold -> R.string.workout_hold
-                else -> R.string.workout_counting
-            },
+            if (state.isSignalArmed) R.string.workout_counting else R.string.workout_signal_lost,
         )
         WorkoutPhase.PAUSED -> stringResource(R.string.workout_paused)
         else -> ""
     }
+    val statusIcon = when {
+        isPlank -> if (state.isPlankRunning) Icons.Filled.Timer else Icons.Filled.TouchApp
+        state.isSignalArmed -> Icons.Filled.MonitorHeart
+        else -> Icons.Filled.HourglassEmpty
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Nothing is measured during the plank, so there is nobody to detect.
+        if (!isPlank) SubjectLabel(state, live)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(
-                when {
-                    isFace && detected -> Icons.Outlined.Face
-                    isFace -> Icons.Outlined.FaceRetouchingOff
-                    detected -> Icons.Filled.Accessibility
-                    else -> Icons.Outlined.PersonOff
-                },
-                contentDescription = null,
-                tint = if (detected) CindyTheme.colors.success else CindyTheme.colors.brand,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                stringResource(
-                    when {
-                        isFace && detected -> R.string.workout_face
-                        isFace -> R.string.workout_no_face
-                        detected -> R.string.workout_person
-                        else -> R.string.workout_no_person
-                    },
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(
-                if (state.isSignalArmed) Icons.Filled.MonitorHeart else Icons.Filled.HourglassEmpty,
+                statusIcon,
                 contentDescription = null,
                 tint = if (state.isSignalArmed) CindyTheme.colors.success else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
@@ -468,26 +508,62 @@ private fun StatusLine(state: WorkoutState, live: LiveSignal) {
 }
 
 @Composable
+private fun SubjectLabel(state: WorkoutState, live: LiveSignal) {
+    val detected = live.subjectDetected
+    val isFace = state.trackedSource == SignalSource.FACE
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(
+            when {
+                isFace && detected -> Icons.Outlined.Face
+                isFace -> Icons.Outlined.FaceRetouchingOff
+                detected -> Icons.Filled.Accessibility
+                else -> Icons.Outlined.PersonOff
+            },
+            contentDescription = null,
+            tint = if (detected) CindyTheme.colors.success else CindyTheme.colors.brand,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            stringResource(
+                when {
+                    isFace && detected -> R.string.workout_face
+                    isFace -> R.string.workout_no_face
+                    detected -> R.string.workout_person
+                    else -> R.string.workout_no_person
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
 private fun Controls(engine: WorkoutEngine, state: WorkoutState, onRequestAbort: () -> Unit) {
     val finished = state.phase == WorkoutPhase.FINISHED
+    // The score is final during the plank, and the plank has no pause.
+    val isPlank = state.phase == WorkoutPhase.PLANK
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // "−1" is a typographic minus, which TalkBack does not read as anything sayable.
-            AdjustButton("−1", stringResource(R.string.workout_one_rep_less), !finished, Modifier.weight(1f)) {
-                engine.adjust(-1)
-            }
-            AdjustButton("+1", stringResource(R.string.workout_one_rep_more), !finished, Modifier.weight(1f)) {
-                engine.adjust(1)
+        if (!isPlank) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // "−1" is a typographic minus, which TalkBack does not read as anything sayable.
+                AdjustButton("−1", stringResource(R.string.workout_one_rep_less), !finished, Modifier.weight(1f)) {
+                    engine.adjust(-1)
+                }
+                AdjustButton("+1", stringResource(R.string.workout_one_rep_more), !finished, Modifier.weight(1f)) {
+                    engine.adjust(1)
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            BrandButton(
-                text = stringResource(if (state.isPaused) R.string.workout_resume else R.string.workout_pause),
-                icon = if (state.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                enabled = !finished && state.phase != WorkoutPhase.COUNTDOWN && !state.cameraInterrupted,
-                onClick = { if (state.isPaused) engine.resume() else engine.pause() },
-                modifier = Modifier.weight(1f),
-            )
+            if (!isPlank) {
+                BrandButton(
+                    text = stringResource(if (state.isPaused) R.string.workout_resume else R.string.workout_pause),
+                    icon = if (state.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    enabled = !finished && state.phase != WorkoutPhase.COUNTDOWN && !state.cameraInterrupted,
+                    onClick = { if (state.isPaused) engine.resume() else engine.pause() },
+                    modifier = Modifier.weight(1f),
+                )
+            }
             SecondaryButton(
                 text = stringResource(R.string.workout_stop),
                 icon = Icons.Filled.Close,

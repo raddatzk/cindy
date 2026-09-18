@@ -4,12 +4,14 @@ import me.raddatz.cindy.core.calibration.CalibrationProfile
 import me.raddatz.cindy.core.calibration.ExerciseCalibration
 import me.raddatz.cindy.core.signal.RepDirection
 import me.raddatz.cindy.core.workout.WorkoutEvent
+import me.raddatz.cindy.core.workout.WorkoutPhase
 import me.raddatz.cindy.core.workout.WorkoutScore
 import me.raddatz.cindy.core.workout.WorkoutStateMachine
 import org.junit.Test
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -63,35 +65,53 @@ class WorkoutPlanTests {
     }
 
     @Test
-    fun customTargetsAndHoldsAreRespected() {
+    fun thePlankFollowsTheAmrapOutsideTheRound() {
         val plan = WorkoutPlan.withoutPullUps
             .withTarget(3, Exercise.PUSH_UP)
             .withEnabled(Exercise.PLANK, true)
             .withTarget(20, Exercise.PLANK)
-        assertEquals(listOf(Exercise.PUSH_UP, Exercise.SQUAT, Exercise.PLANK), plan.exercises)
-        assertEquals(1, plan.countTarget(Exercise.PLANK))
-        assertEquals(3 + 15 + 1, plan.repsPerRound)
-        // iOS (German): "3 Liegestütze · 15 Kniebeugen · 20 s Plank"
-        assertEquals(
-            listOf(
-                ExerciseSetLabel.Reps(3, Exercise.PUSH_UP, singular = false),
-                ExerciseSetLabel.Reps(15, Exercise.SQUAT, singular = false),
-                ExerciseSetLabel.Hold(20, Exercise.PLANK),
-            ),
-            plan.summary,
+        assertEquals(listOf(Exercise.PUSH_UP, Exercise.SQUAT), plan.exercises)
+        assertTrue(Exercise.PLANK in plan)
+        assertEquals(20, plan.target(Exercise.PLANK))
+        assertEquals(3 + 15, plan.repsPerRound)
+        // iOS (German): "3 Liegestütze · 15 Kniebeugen" and "…, danach 20 s Plank"
+        val round = listOf(
+            ExerciseSetLabel.Reps(3, Exercise.PUSH_UP, singular = false),
+            ExerciseSetLabel.Reps(15, Exercise.SQUAT, singular = false),
         )
+        assertEquals(round, plan.summary)
+        assertEquals(PlanSummary(round, ExerciseSetLabel.Hold(20, Exercise.PLANK)), plan.summaryWithPlank)
 
         val machine = WorkoutStateMachine(plan)
         machine.beginCountdown(); machine.start(); machine.activate()
         repeat(3) { machine.registerRep() }
-        assertEquals(Exercise.SQUAT, machine.exercise)
         machine.activate()
-        repeat(15) { machine.registerRep() }
-        assertEquals(Exercise.PLANK, machine.exercise)
-        machine.activate()
-        val events = machine.registerRep()
+        val events = (0 until 15).flatMap { machine.registerRep() }
         assertTrue(events.contains(WorkoutEvent.RoundCompleted(1)))
+        assertEquals(Exercise.PUSH_UP, machine.exercise)
+        machine.activate()
+        machine.registerRep()
+        machine.beginPlank()
+        assertEquals(WorkoutPhase.PLANK, machine.phase)
+        assertTrue(machine.adjust(by = 1).isEmpty()) // the score is final
         assertEquals(19, machine.score.totalReps)
+        assertEquals(listOf<WorkoutEvent>(WorkoutEvent.Finished), machine.finish())
+    }
+
+    @Test
+    fun plansWithThePlankInTheRoundMoveItBehindTheAmrap() {
+        val saved = """{"sets":[{"exercise":"pushUp","target":10},{"exercise":"plank","target":45},""" +
+            """{"exercise":"squat","target":15}],"durationMinutes":20}"""
+        val plan = CindyJson.decodeFromString(WorkoutPlan.serializer(), saved)
+        assertEquals(listOf(Exercise.PUSH_UP, Exercise.SQUAT), plan.exercises)
+        assertEquals(45, plan.plankSeconds)
+        val roundTripped = CindyJson.decodeFromString(WorkoutPlan.serializer(), CindyJson.encodeToString(WorkoutPlan.serializer(), plan))
+        assertEquals(plan, roundTripped)
+        val withoutPlank = CindyJson.decodeFromString(
+            WorkoutPlan.serializer(),
+            CindyJson.encodeToString(WorkoutPlan.serializer(), WorkoutPlan.cindy),
+        )
+        assertNull(withoutPlank.plankSeconds)
     }
 
     @Test

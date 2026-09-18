@@ -14,6 +14,9 @@ enum class WorkoutPhase {
     /** Last rep of an exercise done; waiting for the next exercise's signal to stabilise. */
     TRANSITION,
     PAUSED,
+
+    /** The AMRAP clock ran out and the plan has a plank: the score is final, the plank follows. */
+    PLANK,
     FINISHED,
 }
 
@@ -84,6 +87,12 @@ class WorkoutStateMachine(plan: WorkoutPlan = WorkoutPlan.cindy) {
         if (phase != WorkoutPhase.TRANSITION) return emptyList()
         phase = WorkoutPhase.ACTIVE
         return listOf(WorkoutEvent.ExerciseStarted(exercise))
+    }
+
+    /** The AMRAP is over; the plank of the plan comes next. The score stays as it is. */
+    fun beginPlank() {
+        if (!isRunning || !plan.hasPlank) return
+        phase = WorkoutPhase.PLANK
     }
 
     fun pause() {

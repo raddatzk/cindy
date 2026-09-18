@@ -69,6 +69,14 @@ class CalibrationEngineTests {
     }
 
     @Test
+    fun holdsAreSkipped() = runTest {
+        val engine = engine(listOf(Exercise.PUSH_UP, Exercise.PLANK, Exercise.SQUAT))
+        assertEquals(listOf(Exercise.PUSH_UP, Exercise.SQUAT), engine.state.value.exercises)
+        assertEquals(2, engine.state.value.stepCount)
+        engine.close()
+    }
+
+    @Test
     fun oneCyclePerExerciseCalibratesAndSavesTheProfile() = runTest {
         val engine = engine(listOf(Exercise.PUSH_UP))
         assertEquals(CalibrationStep.Intro, engine.state.value.step)

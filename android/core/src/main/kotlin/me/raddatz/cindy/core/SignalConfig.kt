@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 /** Which measurement feeds the rep detector. */
 @Serializable
 enum class SignalSource(val rawValue: String) {
-    /** Face bounding-box based signal (push-ups, pull-ups, plank). Display name "Face". */
+    /** Face bounding-box based signal (push-ups, pull-ups). Display name "Face". */
     @SerialName("face")
     FACE("face"),
 
@@ -146,14 +146,12 @@ data class SignalConfig(
     val calibrationMinAbsoluteExcursion: Float = 0.05f,
     /** Brightness (0…1) must dip by at least this much; the recorded squats dipped 0.03–0.09. */
     val calibrationMinBrightnessExcursion: Float = 0.015f,
-    /** Seconds the athlete holds the plank during calibration. */
-    val calibrationHoldDuration: Double = 3.0,
-    /** Half-width of the plank band relative to the mean signal (± 25 %). */
-    val calibrationHoldBandMargin: Float = 0.25f,
 
     // Workout
 
     val workoutCountdownSeconds: Int = 5,
+    /** Countdown after the athlete taps start on a hold (plank) before its clock runs. */
+    val holdCountdownSeconds: Int = 3,
 
     // Camera
 
@@ -166,7 +164,7 @@ data class SignalConfig(
         Exercise.PULL_UP -> pullUpSource
         Exercise.PUSH_UP -> pushUpSource
         Exercise.SQUAT -> squatSource
-        Exercise.PLANK -> pushUpSource // same geometry as the push-up top position
+        Exercise.PLANK -> source(Exercise.PUSH_UP) // unused: holds run on a timer
     }
 
     fun faceYWeight(exercise: Exercise): Float = when (exercise) {

@@ -22,6 +22,7 @@ import me.raddatz.cindy.ui.text.nameRes
 import me.raddatz.cindy.ui.text.pluralNameRes
 import me.raddatz.cindy.ui.text.singularNameRes
 import me.raddatz.cindy.ui.text.summaryText
+import me.raddatz.cindy.ui.text.summaryWithPlankText
 import me.raddatz.cindy.ui.text.text
 import me.raddatz.cindy.ui.text.textRes
 import me.raddatz.cindy.ui.text.title
@@ -29,6 +30,8 @@ import me.raddatz.cindy.ui.text.titleRes
 import me.raddatz.cindy.ui.text.unitRes
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -68,11 +71,14 @@ class TextMappingTests {
             assertString(exercise.pluralNameRes, "$exercise plural")
             assertString(exercise.singularNameRes, "$exercise singular")
             assertString(exercise.unitRes, "$exercise unit")
-            assertString(exercise.calibrationInstructionRes, "$exercise instruction")
+            // Holds run on a timer and are never calibrated.
+            val instruction = exercise.calibrationInstructionRes
+            if (exercise.needsCalibration) assertString(assertNotNull(instruction), "$exercise instruction") else assertNull(instruction)
         }
         // Names must not collide between exercises (a copy-paste slip in the mapping).
         assertEquals(Exercise.entries.size, Exercise.entries.map { it.pluralNameRes }.toSet().size)
-        assertEquals(Exercise.entries.size, Exercise.entries.map { it.calibrationInstructionRes }.toSet().size)
+        val calibrated = Exercise.entries.filter { it.needsCalibration }
+        assertEquals(calibrated.size, calibrated.map { it.calibrationInstructionRes }.toSet().size)
     }
 
     @Test
@@ -151,7 +157,11 @@ class TextMappingTests {
         val pullUps = summary.parts.first() as UiText.Res
         assertEquals(R.string.plan_set_reps, pullUps.id)
         assertEquals(UiText.Res(R.string.exercise_pull_up_singular), pullUps.args[1])
-        val plank = summary.parts.last() as UiText.Res
-        assertEquals(R.string.plan_set_hold, plank.id)
+        // The plank follows the round: "…, then 30 s Plank".
+        val withPlank = plan.summaryWithPlankText as UiText.Res
+        assertEquals(R.string.plan_summary_with_plank, withPlank.id)
+        assertResolvable(withPlank, "summary with plank")
+        assertEquals(R.string.plan_set_hold, (withPlank.args[1] as UiText.Res).id)
+        assertEquals(summary, WorkoutPlan.cindy.withTarget(1, Exercise.PULL_UP).summaryWithPlankText)
     }
 }

@@ -66,8 +66,11 @@
     <string name="plan_duration_summary">%1$d min · %2$s</string>
     <string name="plan_edit_title">Edit workout</string>
     <string name="plan_section_exercises">Exercises per round</string>
-    <string name="plan_section_exercises_footer">Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score.</string>
+    <string name="plan_section_exercises_footer">Drag to reorder.</string>
     <string name="plan_section_not_in_plan">Not in the plan</string>
+    <string name="plan_section_after_amrap">After the AMRAP</string>
+    <string name="plan_section_after_amrap_footer">Start it yourself once you are in position. It does not count towards the score.</string>
+    <string name="plan_summary_with_plank">%1$s, then %2$s</string>
     <string name="plan_add_exercise">Add %1$s</string>
     <string name="plan_remove_exercise">Remove %1$s</string>
     <string name="plan_move_up">Move up</string>
@@ -155,7 +158,6 @@
     <string name="calibration_start">Start (%1$d/%2$d)</string>
     <string name="calibration_hold_start">Hold the start position</string>
     <string name="calibration_now_one">Now: 1 %1$s</string>
-    <string name="calibration_now_plank">Now: hold the plank still</string>
     <string name="calibration_detected">Detected</string>
     <string name="calibration_not_detected">Not detected</string>
     <string name="calibration_seconds">%1$s s</string>
@@ -173,7 +175,6 @@
     <string name="calibration_instruction_pull_up">Hang from the bar with straight arms and stay still. After the countdown: one pull-up until your chin is over the bar, then hang all the way down again.</string>
     <string name="calibration_instruction_push_up">Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top.</string>
     <string name="calibration_instruction_squat">Toes just behind the phone, then keep still; you can look wherever you like. After the countdown: one squat, then stand up straight again.</string>
-    <string name="calibration_instruction_plank">Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds.</string>
     <string name="calibration_failure_no_face">No face detected. Check light and position: your face has to be right above the phone.</string>
     <string name="calibration_failure_no_person">No person detected. Check light and position: your shoulders have to be above the camera and in the picture.</string>
     <string name="calibration_failure_too_weak">The movement was too weak in the signal. Keep your face right above the phone; for pull-ups put the phone directly under the bar.</string>
@@ -212,8 +213,13 @@
     <string name="workout_one_rep_less">One rep less</string>
     <string name="workout_one_rep_more">One rep more</string>
     <string name="workout_progress">%1$d of %2$d</string>
-    <string name="workout_hide_preview">Hide camera preview</string>
-    <string name="workout_show_preview">Show camera preview</string>
+    <string name="camera_hide_preview">Hide camera preview</string>
+    <string name="camera_show_preview">Show camera preview</string>
+    <string name="workout_time_is_up">Time is up</string>
+    <string name="workout_start_hold">Start %1$s</string>
+    <string name="workout_finish_hold">Finish %1$s</string>
+    <string name="workout_tap_start">Tap start once you are in position</string>
+    <string name="workout_starting_in">Starting in %1$d</string>
 
     <!-- Result and history -->
     <string name="result_title">Result</string>

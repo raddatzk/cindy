@@ -46,7 +46,7 @@ import me.raddatz.cindy.ui.components.OnResume
 import me.raddatz.cindy.ui.components.RoundChart
 import me.raddatz.cindy.ui.text.Formats
 import me.raddatz.cindy.ui.text.appLocale
-import me.raddatz.cindy.ui.text.summaryText
+import me.raddatz.cindy.ui.text.summaryWithPlankText
 import me.raddatz.cindy.ui.text.text
 import me.raddatz.cindy.ui.theme.CindyTheme
 
@@ -142,7 +142,7 @@ fun WorkoutDetailScreen(model: AppModel, recordId: String, onBack: () -> Unit) {
             )
             record.plan?.let { plan ->
                 Text(
-                    stringResource(R.string.plan_duration_summary, plan.durationMinutes, plan.summaryText.text()),
+                    stringResource(R.string.plan_duration_summary, plan.durationMinutes, plan.summaryWithPlankText.text()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

@@ -151,4 +151,32 @@ class CalibrationAnalyzerTests {
         assertEquals(listOf(Exercise.SQUAT), loaded.missingExercises(WorkoutPlan.cindy))
         assertNotNull(loaded.calibration(Exercise.PUSH_UP))
     }
+
+    @Test
+    fun thePlankNeedsNoCalibration() {
+        val plan = WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true)
+        var profile = CalibrationProfile()
+        for (exercise in WorkoutPlan.cindy.exercises) {
+            profile = profile.withCalibration(
+                ExerciseCalibration(
+                    source = SignalConfig.default.source(exercise), minValue = 0.1f, maxValue = 0.3f, baseline = 0.1f,
+                    low = 0.15f, high = 0.25f, direction = exercise.defaultRepDirection, repDuration = 1.2,
+                    calibratedAt = Instant.now(),
+                ),
+                exercise,
+            )
+        }
+        assertTrue(profile.missingExercises(plan).isEmpty())
+        assertTrue(profile.isComplete(plan))
+        // A plank calibration from before the timer is dropped on load.
+        profile = profile.withCalibration(
+            ExerciseCalibration(
+                source = SignalConfig.default.source(Exercise.PLANK), minValue = 0.1f, maxValue = 0.3f,
+                baseline = 0.2f, low = 0.15f, high = 0.25f, direction = RepDirection.PEAK, repDuration = 3.0,
+                calibratedAt = Instant.now(),
+            ),
+            Exercise.PLANK,
+        )
+        assertNull(profile.removingOutdated(SignalConfig.default).calibration(Exercise.PLANK))
+    }
 }

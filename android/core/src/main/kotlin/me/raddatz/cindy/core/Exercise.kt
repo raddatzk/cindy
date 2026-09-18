@@ -25,7 +25,7 @@ enum class Exercise(val rawValue: String) {
     @SerialName("squat")
     SQUAT("squat"),
 
-    /** Time-based hold: the face stays at a constant distance, the clock runs. "Plank". */
+    /** Time-based hold on a timer the athlete starts; the camera measures nothing. "Plank". */
     @SerialName("plank")
     PLANK("plank");
 
@@ -33,6 +33,9 @@ enum class Exercise(val rawValue: String) {
 
     /** true for exercises measured in seconds instead of reps. */
     val isHold: Boolean get() = this == PLANK
+
+    /** Holds run on a timer the athlete starts, so only rep exercises are calibrated. */
+    val needsCalibration: Boolean get() = !isHold
 
     /** Default target per round: reps for movements, seconds for holds. */
     val defaultTarget: Int
@@ -59,7 +62,7 @@ enum class Exercise(val rawValue: String) {
             PULL_UP -> RepDirection.TROUGH // hanging = face closest → largest area; chin over bar = smaller
             PUSH_UP -> RepDirection.PEAK // top = face far → small area; bottom = close → large
             SQUAT -> RepDirection.PEAK // standing = far; bottom of squat = closer
-            PLANK -> RepDirection.PEAK // unused: holds use a band, not a cycle
+            PLANK -> RepDirection.PEAK // unused: holds run on a timer
         }
 
     companion object {

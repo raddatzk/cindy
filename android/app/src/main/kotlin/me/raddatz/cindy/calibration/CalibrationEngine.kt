@@ -84,7 +84,7 @@ class CalibrationEngine(
     private val store: CalibrationStore,
     existing: CalibrationProfile?,
     private val config: SignalConfig = SignalConfig.default,
-    private val exercises: List<Exercise> = Exercise.entries,
+    exercises: List<Exercise> = Exercise.entries,
     val frameSource: FrameSource,
     private val audio: AudioCues,
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
@@ -93,10 +93,13 @@ class CalibrationEngine(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var exerciseIndex = 0
 
+    /** Holds in the requested exercises are skipped: they run on a timer. */
+    private val exercises: List<Exercise> = exercises.filter { it.needsCalibration }
+
     private val _state = MutableStateFlow(
         CalibrationState(
-            exercises = exercises,
-            currentExercise = exercises.firstOrNull(),
+            exercises = this.exercises,
+            currentExercise = this.exercises.firstOrNull(),
             profile = existing ?: CalibrationProfile(createdAt = clock.instant()),
         ),
     )
@@ -268,7 +271,7 @@ class CalibrationEngine(
         }
         if (observation.face != null || observation.pose != null) bodyFrames += 1
         val analyzer = CalibrationAnalyzer(config = config, source = output.source, clock = clock)
-        val calibration = if (exercise.isHold) analyzer.evaluateHold(trace) else analyzer.evaluate(trace)
+        val calibration = analyzer.evaluate(trace)
         if (calibration != null) {
             timeoutJob?.cancel()
             frameSource.setPipeline(null)
@@ -288,7 +291,7 @@ class CalibrationEngine(
         timeoutJob?.cancel()
         frameSource.setPipeline(null)
         val analyzer = CalibrationAnalyzer(config = config, source = config.source(exercise), clock = clock)
-        val failure = if (exercise.isHold) analyzer.diagnoseHold(trace) else analyzer.diagnose(trace)
+        val failure = analyzer.diagnose(trace)
         setStep(CalibrationStep.Failed(exercise, failure))
     }
 

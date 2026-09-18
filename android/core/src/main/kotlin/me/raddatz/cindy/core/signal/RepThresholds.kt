@@ -104,7 +104,7 @@ data class RepThresholds(
             Exercise.PUSH_UP -> RepThresholds(0.06f, 0.16f, RepDirection.PEAK)
             Exercise.SQUAT -> RepThresholds(0.006f, 0.012f, RepDirection.PEAK)
             Exercise.PULL_UP -> RepThresholds(0.0015f, 0.003f, RepDirection.TROUGH)
-            Exercise.PLANK -> RepThresholds(0.04f, 0.10f, RepDirection.PEAK) // band, not a cycle
+            Exercise.PLANK -> RepThresholds(0.06f, 0.16f, RepDirection.PEAK) // unused: holds run on a timer
         }
     }
 }

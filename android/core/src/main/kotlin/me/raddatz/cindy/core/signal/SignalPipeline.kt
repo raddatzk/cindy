@@ -16,8 +16,6 @@ data class PipelineOutput(
     val phase: RepPhase,
     val isArmed: Boolean,
     val repCount: Int,
-    /** Accumulated hold time in seconds (plank only). */
-    val heldSeconds: Double? = null,
     /** Thresholds the detector currently compares against (rescaled once armed if relative). */
     val thresholds: RepThresholds? = null,
 )
@@ -27,15 +25,13 @@ data class PipelineOutput(
  * brightness reps additionally need [BodyEvidence].
  * Not thread-safe; call [process] from a single thread.
  *
- * [holdSeconds] switches the pipeline to the time-based hold detector (plank). [source] defaults
- * to the config's source for the exercise.
+ * [source] defaults to the config's source for the exercise.
  */
 class SignalPipeline(
     val exercise: Exercise,
     thresholds: RepThresholds,
     source: SignalSource? = null,
     val config: SignalConfig = SignalConfig.default,
-    holdSeconds: Double? = null,
 ) {
     val source: SignalSource = source ?: config.source(exercise)
     val thresholds: RepThresholds
@@ -44,8 +40,7 @@ class SignalPipeline(
     private val ema = EMAFilter(config.emaAlpha)
     private val median: MedianFilter? =
         if (this.source == SignalSource.POSE) MedianFilter(config.poseMedianWindow) else null
-    private val detector: RepDetector?
-    private val holdDetector: HoldDetector?
+    private val detector: RepDetector
     private val evidence: BodyEvidence?
 
     /** Timestamp of the previous frame of any confidence; the EMA scales to this interval. */
@@ -58,14 +53,8 @@ class SignalPipeline(
         } else {
             thresholds.copy(baseline = null)
         }
-        if (holdSeconds != null) {
-            holdDetector = HoldDetector(this.thresholds, holdSeconds, config)
-            detector = null
-        } else {
-            detector = RepDetector(this.thresholds, config)
-            holdDetector = null
-        }
-        if (this.source == SignalSource.BRIGHTNESS && detector != null) {
+        detector = RepDetector(this.thresholds, config)
+        if (this.source == SignalSource.BRIGHTNESS) {
             val bodyEvidence = BodyEvidence(config)
             evidence = bodyEvidence
             detector.cycleValidator = {
@@ -76,16 +65,9 @@ class SignalPipeline(
         }
     }
 
-    val isArmed: Boolean get() = detector?.isArmed ?: holdDetector?.isArmed ?: false
-    val repCount: Int get() = detector?.repCount ?: holdDetector?.repCount ?: 0
-    private val phase: RepPhase get() = detector?.phase ?: holdDetector?.phase ?: RepPhase.REST
-    private val heldSeconds: Double? get() = holdDetector?.heldSeconds
-    private val activeThresholds: RepThresholds? get() = detector?.activeThresholds ?: holdDetector?.thresholds
-
-    private fun detect(value: Float?, confidence: Float, timestamp: Double): RepDetectorEvent? {
-        if (detector != null) return detector.process(value, confidence, timestamp)
-        return holdDetector?.process(value, confidence, timestamp)
-    }
+    val isArmed: Boolean get() = detector.isArmed
+    val repCount: Int get() = detector.repCount
+    private val phase: RepPhase get() = detector.phase
 
     fun process(observation: FrameObservation): PipelineOutput {
         evidence?.update(observation, cycleActive = phase != RepPhase.REST)
@@ -105,7 +87,7 @@ class SignalPipeline(
         } else {
             ema.value // hold the last value; the detector ignores this frame anyway
         }
-        val event = detect(
+        val event = detector.process(
             value = if (confidence >= config.minConfidence) smoothed else null,
             confidence = confidence,
             timestamp = timestamp,
@@ -113,7 +95,7 @@ class SignalPipeline(
         return PipelineOutput(
             timestamp = timestamp, exercise = exercise, source = source, raw = value, smoothed = smoothed,
             confidence = confidence, event = event, phase = phase, isArmed = isArmed,
-            repCount = repCount, heldSeconds = heldSeconds, thresholds = activeThresholds,
+            repCount = repCount, thresholds = detector.activeThresholds,
         )
     }
 }

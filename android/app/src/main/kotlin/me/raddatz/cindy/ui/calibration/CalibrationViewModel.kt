@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.launch
 import me.raddatz.cindy.app.AppModel
 import me.raddatz.cindy.calibration.CalibrationEngine
+import me.raddatz.cindy.core.Exercise
 
 /**
  * Holds the calibration engine for as long as the screen is on the back stack. The camera is bound
@@ -23,9 +24,11 @@ class CalibrationViewModel(model: AppModel) : ViewModel() {
         val plan = model.plan.value
         // Only the gaps when a profile exists, e.g. squats after they moved to the brightness signal.
         val missing = profile?.missingExercises(plan).orEmpty()
+        // A plank-only plan has nothing to calibrate in it; offer every rep exercise then.
+        val planned = plan.exercises.filter { it.needsCalibration }
         engine = model.container.calibrationEngine(
             lifecycleOwner = ProcessLifecycleOwner.get(),
-            exercises = missing.ifEmpty { plan.exercises },
+            exercises = missing.ifEmpty { planned.ifEmpty { Exercise.entries } },
         )
     }
 

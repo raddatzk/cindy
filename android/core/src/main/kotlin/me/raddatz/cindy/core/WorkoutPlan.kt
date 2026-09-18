@@ -1,6 +1,10 @@
 package me.raddatz.cindy.core
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlin.math.abs
 
 /** One entry of a round: an exercise with its target (reps, or seconds for holds). */
@@ -29,17 +33,26 @@ sealed interface ExerciseSetLabel {
     data class Reps(val count: Int, val exercise: Exercise, val singular: Boolean) : ExerciseSetLabel
 }
 
+/** What the app layer needs to render [WorkoutPlan.summaryWithPlank]: iOS `"%@, then %@"`. */
+data class PlanSummary(val round: List<ExerciseSetLabel>, val plank: ExerciseSetLabel.Hold?)
+
 /**
- * Ordered list of exercises that make up one round, plus the AMRAP duration.
+ * Ordered list of exercises that make up one round, the AMRAP duration, and an optional plank
+ * held once after the clock has run out.
  *
  * Immutable: the editing functions return a changed copy (Swift `mutating func`s).
  */
-@Serializable
+@Serializable(with = WorkoutPlanSerializer::class)
 data class WorkoutPlan(
+    /** The round: rep exercises only. */
     val sets: List<ExerciseSet>,
     val durationMinutes: Int = 20,
+    /** Seconds of the plank after the AMRAP; null = no plank. */
+    val plankSeconds: Int? = null,
 ) {
+    /** The round's exercises; the plank is not one of them. */
     val exercises: List<Exercise> get() = sets.map { it.exercise }
+    val hasPlank: Boolean get() = plankSeconds != null
     val isValid: Boolean get() = sets.isNotEmpty() && durationMinutes > 0
 
     /** AMRAP duration in seconds. */
@@ -47,19 +60,21 @@ data class WorkoutPlan(
     val first: Exercise get() = exercises[0]
     val last: Exercise get() = exercises[exercises.size - 1]
 
-    /** Score units per round: reps for movements, 1 for a completed hold. */
+    /** Score units per round: the reps of the round's exercises. */
     val repsPerRound: Int get() = sets.fold(0) { sum, set -> sum + scoreUnits(set) }
 
-    operator fun contains(exercise: Exercise): Boolean = exercises.contains(exercise)
+    operator fun contains(exercise: Exercise): Boolean = if (exercise.isHold) hasPlank else exercises.contains(exercise)
     fun isFirst(exercise: Exercise): Boolean = exercise == first
     fun isLast(exercise: Exercise): Boolean = exercise == last
 
     /** Target of the given exercise (reps or seconds). */
-    fun target(exercise: Exercise): Int =
-        sets.firstOrNull { it.exercise == exercise }?.target ?: exercise.defaultTarget
+    fun target(exercise: Exercise): Int {
+        if (exercise.isHold) return plankSeconds ?: exercise.defaultTarget
+        return sets.firstOrNull { it.exercise == exercise }?.target ?: exercise.defaultTarget
+    }
 
-    /** Reps the state machine counts for one exercise: holds count as a single rep. */
-    fun countTarget(exercise: Exercise): Int = if (exercise.isHold) 1 else target(exercise)
+    /** Reps the state machine counts for one round exercise. */
+    fun countTarget(exercise: Exercise): Int = target(exercise)
 
     fun next(after: Exercise): Exercise {
         val list = exercises
@@ -77,16 +92,22 @@ data class WorkoutPlan(
     fun repsBefore(exercise: Exercise): Int =
         sets.takeWhile { it.exercise != exercise }.fold(0) { sum, set -> sum + scoreUnits(set) }
 
-    /** "5 pull-ups · 10 push-ups · 15 squats" on iOS: the labels, joined with " · " by the UI. */
+    /** "5 pull-ups · 10 push-ups · 15 squats" on iOS: one round, the labels joined with " · " by the UI. */
     val summary: List<ExerciseSetLabel> get() = sets.map { it.label }
 
-    private fun scoreUnits(set: ExerciseSet): Int = if (set.exercise.isHold) 1 else set.target
+    /** The round plus the plank after it: "5 pull-ups · 10 push-ups · 15 squats, then 30 s plank". */
+    val summaryWithPlank: PlanSummary
+        get() = PlanSummary(summary, plankSeconds?.let { ExerciseSetLabel.Hold(it, Exercise.PLANK) })
+
+    private fun scoreUnits(set: ExerciseSet): Int = set.target
 
     // Editing
 
     /** Swift `setEnabled(_:_:)`. */
     fun withEnabled(exercise: Exercise, enabled: Boolean): WorkoutPlan =
-        if (enabled) {
+        if (exercise.isHold) {
+            copy(plankSeconds = if (enabled) plankSeconds ?: exercise.defaultTarget else null)
+        } else if (enabled) {
             if (contains(exercise)) this
             else copy(sets = sets + ExerciseSet(exercise, exercise.defaultTarget))
         } else {
@@ -95,10 +116,11 @@ data class WorkoutPlan(
 
     /** Swift `setTarget(_:for:)`: clamped into [targetRange]. */
     fun withTarget(target: Int, exercise: Exercise): WorkoutPlan {
-        val index = sets.indexOfFirst { it.exercise == exercise }
-        if (index < 0) return this
         val range = targetRange(exercise)
         val clamped = minOf(maxOf(target, range.first), range.last)
+        if (exercise.isHold) return if (plankSeconds == null) this else copy(plankSeconds = clamped)
+        val index = sets.indexOfFirst { it.exercise == exercise }
+        if (index < 0) return this
         return copy(sets = sets.toMutableList().also { it[index] = it[index].copy(target = clamped) })
     }
 
@@ -123,8 +145,9 @@ data class WorkoutPlan(
             durationMinutes = durationChoices.minByOrNull { abs(it - durationMinutes) } ?: 20,
         )
         for (set in sets) {
-            plan = plan.withTarget(if (set.exercise.isHold) (set.target + 2) / 5 * 5 else set.target, set.exercise)
+            plan = plan.withTarget(set.target, set.exercise)
         }
+        plankSeconds?.let { plan = plan.withTarget((it + 2) / 5 * 5, Exercise.PLANK) }
         return plan
     }
 
@@ -158,5 +181,35 @@ data class WorkoutPlan(
          */
         fun targetRange(exercise: Exercise): IntRange =
             if (exercise.isHold) 5..300 else 1..cindy.target(exercise)
+    }
+}
+
+/** The stored shape of [WorkoutPlan]. */
+@Serializable
+private data class StoredWorkoutPlan(
+    val sets: List<ExerciseSet>,
+    val durationMinutes: Int = 20,
+    val plankSeconds: Int? = null,
+)
+
+/**
+ * Plans saved while the plank was part of the round (and history records carrying them) had it
+ * in `sets`; decoding makes it the finisher (Swift `init(from:)`).
+ */
+object WorkoutPlanSerializer : KSerializer<WorkoutPlan> {
+    private val stored = StoredWorkoutPlan.serializer()
+    override val descriptor: SerialDescriptor = stored.descriptor
+
+    override fun serialize(encoder: Encoder, value: WorkoutPlan) {
+        encoder.encodeSerializableValue(stored, StoredWorkoutPlan(value.sets, value.durationMinutes, value.plankSeconds))
+    }
+
+    override fun deserialize(decoder: Decoder): WorkoutPlan {
+        val plan = decoder.decodeSerializableValue(stored)
+        return WorkoutPlan(
+            sets = plan.sets.filter { !it.exercise.isHold },
+            durationMinutes = plan.durationMinutes,
+            plankSeconds = plan.plankSeconds ?: plan.sets.firstOrNull { it.exercise.isHold }?.target,
+        )
     }
 }

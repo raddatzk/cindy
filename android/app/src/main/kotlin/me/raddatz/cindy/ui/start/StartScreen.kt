@@ -63,7 +63,7 @@ import me.raddatz.cindy.ui.text.Formats
 import me.raddatz.cindy.ui.text.UiText
 import me.raddatz.cindy.ui.text.appLocale
 import me.raddatz.cindy.ui.text.displayName
-import me.raddatz.cindy.ui.text.summaryText
+import me.raddatz.cindy.ui.text.summaryWithPlankText
 import me.raddatz.cindy.ui.text.text
 import me.raddatz.cindy.ui.theme.CindyTheme
 
@@ -129,7 +129,7 @@ fun StartScreen(model: AppModel, onNavigate: (Any) -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    plan.summaryText.text(),
+                    plan.summaryWithPlankText.text(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

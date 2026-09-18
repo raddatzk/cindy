@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
@@ -24,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -180,7 +183,7 @@ fun PlanEditorList(
         }
         SectionFooter(stringResource(R.string.plan_section_exercises_footer))
 
-        val missing = addable.filter { it !in plan }
+        val missing = addable.filter { !it.isHold && it !in plan }
         if (missing.isNotEmpty()) {
             SectionHeader(stringResource(R.string.plan_section_not_in_plan))
             for (exercise in missing) {
@@ -202,7 +205,49 @@ fun PlanEditorList(
                 }
             }
         }
+
+        PlankSection(plan, onPlanChange)
     }
+}
+
+/** The plank is not part of the round: it follows once, after the AMRAP clock has run out. */
+@Composable
+private fun PlankSection(plan: WorkoutPlan, onPlanChange: (WorkoutPlan) -> Unit) {
+    val exercise = Exercise.PLANK
+    val name = stringResource(exercise.pluralNameRes)
+    SectionHeader(stringResource(R.string.plan_section_after_amrap))
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(plan.hasPlank, role = Role.Switch) { onPlanChange(plan.withEnabled(exercise, it)) }
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = plan.hasPlank, onCheckedChange = null)
+    }
+    val seconds = plan.plankSeconds
+    if (seconds != null) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Stepper(
+                value = seconds,
+                range = WorkoutPlan.targetRange(exercise),
+                step = 5,
+                onValueChange = { onPlanChange(plan.withTarget(it, exercise)) },
+                subject = name,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    "$seconds ${stringResource(exercise.unitRes)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            ExerciseDemoButton(exercise, style = DemoButtonStyle.ICON)
+        }
+    }
+    SectionFooter(stringResource(R.string.plan_section_after_amrap_footer))
 }
 
 @Composable
@@ -239,7 +284,7 @@ private fun PlanRow(
                 Stepper(
                     value = set.target,
                     range = WorkoutPlan.targetRange(exercise),
-                    step = if (exercise.isHold) 5 else 1,
+                    step = 1,
                     onValueChange = { onPlanChange(plan.withTarget(it, exercise)) },
                     subject = name,
                     modifier = Modifier.weight(1f),

@@ -64,8 +64,11 @@
     <string name="plan_duration_summary">%1$d min · %2$s</string>
     <string name="plan_edit_title">Workout anpassen</string>
     <string name="plan_section_exercises">Übungen pro Runde</string>
-    <string name="plan_section_exercises_footer">Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.</string>
+    <string name="plan_section_exercises_footer">Zum Umsortieren ziehen.</string>
     <string name="plan_section_not_in_plan">Nicht im Plan</string>
+    <string name="plan_section_after_amrap">Nach dem AMRAP</string>
+    <string name="plan_section_after_amrap_footer">Du startest sie selbst, sobald du in Position bist. Sie zählt nicht zum Ergebnis.</string>
+    <string name="plan_summary_with_plank">%1$s, danach %2$s</string>
     <string name="plan_add_exercise">%1$s hinzufügen</string>
     <string name="plan_remove_exercise">%1$s entfernen</string>
     <string name="plan_move_up">Nach oben</string>
@@ -152,7 +155,6 @@
     <string name="calibration_start">Start (%1$d/%2$d)</string>
     <string name="calibration_hold_start">Ausgangsposition halten</string>
     <string name="calibration_now_one">Jetzt: 1 %1$s</string>
-    <string name="calibration_now_plank">Jetzt: Plank ruhig halten</string>
     <string name="calibration_detected">Erkannt</string>
     <string name="calibration_not_detected">Nicht erkannt</string>
     <string name="calibration_seconds">%1$s s</string>
@@ -170,7 +172,6 @@
     <string name="calibration_instruction_pull_up">Häng dich mit gestreckten Armen an die Stange und bleib ruhig. Nach dem Countdown: ein Klimmzug bis das Kinn über der Stange ist, dann wieder ganz aushängen.</string>
     <string name="calibration_instruction_push_up">Geh in die Liegestützposition mit gestreckten Armen, Gesicht über dem Handy. Nach dem Countdown: ein Liegestütz, dann wieder oben bleiben.</string>
     <string name="calibration_instruction_squat">Zehen knapp hinter dem Handy, dann still halten; schauen kannst du, wohin du willst. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.</string>
-    <string name="calibration_instruction_plank">Geh in die Plank-Position, Gesicht über dem Handy, und bleib ruhig. Nach dem Countdown die Position 3 Sekunden halten.</string>
     <string name="calibration_failure_no_face">Kein Gesicht erkannt. Prüfe Licht und Position: Dein Gesicht muss direkt über dem Handy sein.</string>
     <string name="calibration_failure_no_person">Keine Person erkannt. Prüfe Licht und Position: Deine Schultern müssen über der Kamera und im Bild sein.</string>
     <string name="calibration_failure_too_weak">Die Bewegung war im Signal zu schwach. Halte dein Gesicht direkt über dem Handy; für Klimmzüge leg das Handy genau unter die Stange.</string>
@@ -209,8 +210,13 @@
     <string name="workout_one_rep_less">Eine Wiederholung weniger</string>
     <string name="workout_one_rep_more">Eine Wiederholung mehr</string>
     <string name="workout_progress">%1$d von %2$d</string>
-    <string name="workout_hide_preview">Kameravorschau ausblenden</string>
-    <string name="workout_show_preview">Kameravorschau einblenden</string>
+    <string name="camera_hide_preview">Kameravorschau ausblenden</string>
+    <string name="camera_show_preview">Kameravorschau einblenden</string>
+    <string name="workout_time_is_up">Die Zeit ist um</string>
+    <string name="workout_start_hold">%1$s starten</string>
+    <string name="workout_finish_hold">%1$s beenden</string>
+    <string name="workout_tap_start">Tippe auf Start, sobald du in Position bist</string>
+    <string name="workout_starting_in">Start in %1$d</string>
 
     <!-- Result and history -->
     <string name="result_title">Ergebnis</string>

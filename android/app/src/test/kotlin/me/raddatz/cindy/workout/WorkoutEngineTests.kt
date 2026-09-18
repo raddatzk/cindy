@@ -59,8 +59,8 @@ class WorkoutEngineTests {
         runCurrent()
     }
 
-    private fun TestScope.emit(exercise: Exercise, event: RepDetectorEvent?, heldSeconds: Double? = null) {
-        frames.emit(EngineFixtures.face(0.05f, 0.0), output(exercise, event, heldSeconds = heldSeconds))
+    private fun TestScope.emit(exercise: Exercise, event: RepDetectorEvent?) {
+        frames.emit(EngineFixtures.face(0.05f, 0.0), output(exercise, event))
         runCurrent()
     }
 
@@ -299,19 +299,21 @@ class WorkoutEngineTests {
         val partial = CalibrationProfile(createdAt = EngineFixtures.epoch)
             .withCalibration(EngineFixtures.faceCalibration(), Exercise.PULL_UP)
             .withCalibration(EngineFixtures.faceCalibration(), Exercise.PUSH_UP)
-            .withCalibration(EngineFixtures.brightnessCalibration(), Exercise.SQUAT)
-        val engine = engine(profile = partial)
+        val plan = WorkoutPlan.cindy.withEnabled(Exercise.SQUAT, false)
+        val engine = engine(plan, profile = partial)
         started(engine)
         emit(Exercise.PULL_UP, RepDetectorEvent.Armed)
         advanceTimeBy(6 * 60_000L)
         runCurrent()
 
-        val shorter = WorkoutPlan.cindy.copy(durationMinutes = 10)
+        // The plank runs on a timer and needs no calibration.
+        val shorter = plan.withEnabled(Exercise.PLANK, true).copy(durationMinutes = 10)
         assertFalse(engine.updatePlan(shorter)) // not paused
         engine.pause()
         assertEquals(10, engine.shortestDurationAhead)
-        assertFalse(engine.updatePlan(WorkoutPlan.cindy.copy(durationMinutes = 5))) // clock already past
-        assertFalse(engine.updatePlan(WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true))) // plank not calibrated
+        assertEquals(listOf(Exercise.PULL_UP, Exercise.PUSH_UP, Exercise.PLANK), engine.calibratedExercises)
+        assertFalse(engine.updatePlan(plan.copy(durationMinutes = 5))) // clock already past
+        assertFalse(engine.updatePlan(WorkoutPlan.cindy.copy(durationMinutes = 10))) // squats not calibrated
         assertTrue(engine.updatePlan(shorter))
         assertEquals(10, engine.state.value.plan.durationMinutes)
         assertEquals(240.0, engine.state.value.remaining, 0.11)
@@ -336,6 +338,7 @@ class WorkoutEngineTests {
         engine.abort()
         val result = assertNotNull(engine.state.value.result)
         assertFalse(result.completed)
+        assertNull(result.plankSeconds)
         assertEquals(0, result.rounds)
         assertEquals(1, result.extraReps)
         assertEquals(emptyList(), result.roundTimestamps)
@@ -344,22 +347,81 @@ class WorkoutEngineTests {
         engine.close()
     }
 
-    @Test
-    fun plankBeepsEveryTenSecondsUntilTheTarget() = runTest {
-        val plan = WorkoutPlan(listOf(ExerciseSet(Exercise.PLANK, 30)), durationMinutes = 5)
+    /** Runs a five-minute plan with a 30 s plank to the end of the AMRAP clock. */
+    private suspend fun TestScope.inThePlank(): WorkoutEngine {
+        val plan = WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true).copy(durationMinutes = 5)
         val engine = engine(plan)
         started(engine)
-        assertEquals(0.0, engine.state.value.heldSeconds)
-        emit(Exercise.PLANK, RepDetectorEvent.Armed, heldSeconds = 0.0)
+        emit(Exercise.PULL_UP, RepDetectorEvent.Armed)
+        emit(Exercise.PULL_UP, RepDetectorEvent.RepCompleted(1.0))
         audio.events.clear()
-        for (held in listOf(5.0, 9.9, 10.0, 15.0, 20.2, 29.9)) emit(Exercise.PLANK, null, heldSeconds = held)
-        assertEquals(2, audio.count("beep"))
-        assertEquals(29.9, engine.state.value.heldSeconds)
-        emit(Exercise.PLANK, RepDetectorEvent.RepCompleted(30.0), heldSeconds = 30.0)
-        assertEquals(2, audio.count("beep"))
-        assertEquals(1, audio.count("go"))
-        assertEquals(1, engine.state.value.score.rounds)
+        advanceTimeBy(5 * 60_000L)
+        runCurrent()
+        return engine
+    }
+
+    @Test
+    fun thePlankFollowsTheAmrapAndEndsTheWorkoutAtItsTarget() = runTest {
+        val engine = inThePlank()
+        // The score is final; the camera is off but the screen stays on.
+        assertEquals(WorkoutPhase.PLANK, engine.state.value.phase)
+        assertEquals(Exercise.PLANK, engine.state.value.exercise)
+        assertEquals(0.0, engine.state.value.remaining)
+        assertEquals(0.0, engine.state.value.heldSeconds)
+        assertEquals(listOf("end"), audio.events)
+        assertFalse(frames.isRunning)
+        assertTrue(engine.keepScreenOn.value)
+        assertNull(engine.state.value.result)
+        engine.pause() // no pause during the plank
+        engine.adjust(1)
+        assertEquals(WorkoutPhase.PLANK, engine.state.value.phase)
+        assertEquals(1, engine.state.value.score.reps)
+
+        audio.events.clear()
+        engine.startPlank()
+        runCurrent()
+        assertEquals(3, engine.state.value.holdCountdown)
+        engine.startPlank() // a second tap does not start a second countdown
+        advanceTimeBy(3_000)
+        runCurrent()
+        assertTrue(engine.state.value.isPlankRunning)
+        assertNull(engine.state.value.holdCountdown)
+        assertEquals(listOf("beep", "beep", "beep", "go"), audio.events)
+
+        audio.events.clear()
+        advanceTimeBy(29_900)
+        runCurrent()
+        assertEquals(29.9, assertNotNull(engine.state.value.heldSeconds), 0.01)
+        assertEquals(listOf("beep", "beep"), audio.events) // at 10 s and 20 s
+        assertNull(engine.state.value.result)
+        advanceTimeBy(100)
+        runCurrent()
+        val result = assertNotNull(engine.state.value.result)
+        assertTrue(result.completed)
+        assertEquals(30, result.plankSeconds)
+        assertEquals(1, result.extraReps)
+        assertEquals(300.0, result.durationSeconds)
+        assertEquals(listOf("beep", "beep", "end"), audio.events)
+        assertFalse(engine.keepScreenOn.value)
         engine.close()
+    }
+
+    @Test
+    fun finishingOrStoppingThePlankEarlyKeepsTheTimeHeld() = runTest {
+        val finished = inThePlank()
+        finished.startPlank()
+        advanceTimeBy(3_000 + 12_000)
+        runCurrent()
+        finished.finishPlank()
+        assertEquals(12, assertNotNull(finished.state.value.result).plankSeconds)
+        finished.close()
+
+        val stopped = inThePlank()
+        stopped.abort() // before the start: the AMRAP itself was complete
+        val result = assertNotNull(stopped.state.value.result)
+        assertTrue(result.completed)
+        assertEquals(0, result.plankSeconds)
+        stopped.close()
     }
 
     @Test

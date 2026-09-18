@@ -47,14 +47,14 @@ val Exercise.unitRes: Int
 val Exercise.displayName: UiText get() = UiText.Res(pluralNameRes)
 val Exercise.singularName: UiText get() = UiText.Res(singularNameRes)
 
-/** iOS `calibration instruction(for:)`. */
+/** iOS `calibration instruction(for:)`; null for holds, which are never calibrated. */
 @get:StringRes
-val Exercise.calibrationInstructionRes: Int
+val Exercise.calibrationInstructionRes: Int?
     get() = when (this) {
         Exercise.PULL_UP -> R.string.calibration_instruction_pull_up
         Exercise.PUSH_UP -> R.string.calibration_instruction_push_up
         Exercise.SQUAT -> R.string.calibration_instruction_squat
-        Exercise.PLANK -> R.string.calibration_instruction_plank
+        Exercise.PLANK -> null // holds run on a timer
     }
 
 val ExerciseSetLabel.text: UiText
@@ -69,6 +69,13 @@ val ExerciseSetLabel.text: UiText
 
 /** "5 Pull-ups · 10 Push-ups · 15 Squats". */
 val WorkoutPlan.summaryText: UiText get() = UiText.Joined(summary.map { it.text })
+
+/** The round plus the plank after it: "5 Pull-ups · 10 Push-ups · 15 Squats, then 30 s Plank". */
+val WorkoutPlan.summaryWithPlankText: UiText
+    get() {
+        val plank = summaryWithPlank.plank ?: return summaryText
+        return UiText.Res(R.string.plan_summary_with_plank, summaryText, plank.text)
+    }
 
 @get:StringRes
 val DemoCue.textRes: Int

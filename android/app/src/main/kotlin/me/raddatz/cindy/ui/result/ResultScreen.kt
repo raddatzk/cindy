@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.raddatz.cindy.R
 import me.raddatz.cindy.app.AppModel
+import me.raddatz.cindy.core.Exercise
+import me.raddatz.cindy.core.ExerciseSet
 import me.raddatz.cindy.core.persistence.WorkoutRecord
 import me.raddatz.cindy.core.workout.ProgressionAdvisor
 import me.raddatz.cindy.ui.components.BackTopBar
@@ -43,7 +46,7 @@ import me.raddatz.cindy.ui.components.BrandButton
 import me.raddatz.cindy.ui.components.PanelCard
 import me.raddatz.cindy.ui.components.RoundChart
 import me.raddatz.cindy.ui.components.SecondaryButton
-import me.raddatz.cindy.ui.text.summaryText
+import me.raddatz.cindy.ui.text.summaryWithPlankText
 import me.raddatz.cindy.ui.text.text
 import me.raddatz.cindy.ui.theme.CindyTheme
 
@@ -87,6 +90,13 @@ fun ResultScreen(model: AppModel, record: WorkoutRecord, onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            record.plankSeconds?.let { seconds ->
+                // Held after the AMRAP, outside the score.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Filled.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(ExerciseSet(Exercise.PLANK, seconds).label.text.text(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
             if (previous != null) {
                 val diff = record.score.totalReps - previous.score.totalReps
@@ -138,7 +148,7 @@ fun ResultScreen(model: AppModel, record: WorkoutRecord, onClose: () -> Unit) {
                         stringResource(
                             R.string.plan_duration_summary,
                             recommendation.plan.durationMinutes,
-                            recommendation.plan.summaryText.text(),
+                            recommendation.plan.summaryWithPlankText.text(),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

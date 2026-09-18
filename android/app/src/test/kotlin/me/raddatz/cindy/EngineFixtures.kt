@@ -47,13 +47,11 @@ object EngineFixtures {
         .withCalibration(faceCalibration(RepDirection.TROUGH), Exercise.PULL_UP)
         .withCalibration(faceCalibration(), Exercise.PUSH_UP)
         .withCalibration(brightnessCalibration(), Exercise.SQUAT)
-        .withCalibration(faceCalibration(), Exercise.PLANK)
 
     fun output(
         exercise: Exercise,
         event: RepDetectorEvent? = null,
         armed: Boolean = true,
-        heldSeconds: Double? = null,
         timestamp: Double = 0.0,
     ) = PipelineOutput(
         timestamp = timestamp,
@@ -66,7 +64,6 @@ object EngineFixtures {
         phase = RepPhase.REST,
         isArmed = armed,
         repCount = 0,
-        heldSeconds = heldSeconds,
     )
 
     fun face(area: Float, timestamp: Double): FrameObservation {

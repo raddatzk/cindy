@@ -49,21 +49,23 @@ data class CalibrationProfile(
     fun withCalibration(calibration: ExerciseCalibration, exercise: Exercise): CalibrationProfile =
         copy(exercises = exercises + (exercise.rawValue to calibration))
 
-    /** Only a profile covering every exercise of the plan can start a workout. */
-    fun isComplete(plan: WorkoutPlan): Boolean = plan.exercises.all { exercises[it.rawValue] != null }
+    /** Only a profile covering every exercise of the plan can start a workout; holds need none. */
+    fun isComplete(plan: WorkoutPlan): Boolean = missingExercises(plan).isEmpty()
 
     val isComplete: Boolean get() = isComplete(WorkoutPlan.cindy)
 
-    fun missingExercises(plan: WorkoutPlan): List<Exercise> = plan.exercises.filter { exercises[it.rawValue] == null }
+    fun missingExercises(plan: WorkoutPlan): List<Exercise> = plan.exercises.filter { it.needsCalibration && exercises[it.rawValue] == null }
 
     /**
      * Drops calibrations measured on a different signal source than the config uses now (squats
      * moved from the face to body pose); those exercises need a new calibration.
+     * Plank calibrations from before the plank ran on a timer go as well.
      */
     fun removingOutdated(config: SignalConfig): CalibrationProfile =
         copy(
             exercises = exercises.filter { (key, calibration) ->
                 val exercise = Exercise.fromRawValue(key) ?: return@filter false
+                if (!exercise.needsCalibration) return@filter false
                 calibration.source == config.source(exercise)
             },
         )

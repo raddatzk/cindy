@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.FaceRetouchingOff
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.SportsGymnastics
+import androidx.compose.material.icons.outlined.VideocamOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -39,6 +41,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import me.raddatz.cindy.R
 import me.raddatz.cindy.app.AppModel
 import me.raddatz.cindy.calibration.CalibrationStep
+import me.raddatz.cindy.camera.FrameSource
 import me.raddatz.cindy.camera.CameraPreview
 import me.raddatz.cindy.core.Exercise
 import me.raddatz.cindy.core.SignalSource
@@ -127,15 +133,14 @@ fun CalibrationScreen(model: AppModel, onClose: () -> Unit) {
                     )
                     is CalibrationStep.Ready -> {
                         StepHeader(step.exercise, state.stepNumber, state.stepCount)
-                        CameraPreview(
-                            engine.frameSource,
-                            Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)),
-                        )
-                        Text(
-                            stringResource(step.exercise.calibrationInstructionRes),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
+                        TogglablePreview(engine.frameSource)
+                        step.exercise.calibrationInstructionRes?.let {
+                            Text(
+                                stringResource(it),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                         ExerciseDemoButton(step.exercise)
                         SubjectIndicator(state.trackedSource, live)
                         Spacer(Modifier.weight(1f))
@@ -158,11 +163,7 @@ fun CalibrationScreen(model: AppModel, onClose: () -> Unit) {
                     is CalibrationStep.Capturing -> {
                         StepHeader(step.exercise, state.stepNumber, state.stepCount)
                         Text(
-                            if (step.exercise.isHold) {
-                                stringResource(R.string.calibration_now_plank)
-                            } else {
-                                stringResource(R.string.calibration_now_one, stringResource(step.exercise.singularNameRes))
-                            },
+                            stringResource(R.string.calibration_now_one, stringResource(step.exercise.singularNameRes)),
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -300,6 +301,20 @@ private fun ColumnScope.Intro(
     } else {
         BrandButton(stringResource(R.string.common_continue), onClick = onContinue, modifier = Modifier.fillMaxWidth())
     }
+}
+
+/** Off by default: counting needs no picture, the preview only helps placing the phone. */
+@Composable
+private fun TogglablePreview(frameSource: FrameSource) {
+    var showPreview by rememberSaveable { mutableStateOf(false) }
+    if (showPreview) {
+        CameraPreview(frameSource, Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(12.dp)))
+    }
+    SecondaryButton(
+        text = stringResource(if (showPreview) R.string.camera_hide_preview else R.string.camera_show_preview),
+        icon = if (showPreview) Icons.Outlined.VideocamOff else Icons.Filled.Videocam,
+        onClick = { showPreview = !showPreview },
+    )
 }
 
 @Composable

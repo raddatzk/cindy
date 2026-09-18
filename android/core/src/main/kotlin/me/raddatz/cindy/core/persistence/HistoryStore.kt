@@ -28,6 +28,8 @@ data class WorkoutRecord(
     val roundTimestamps: List<Double>? = null,
     /** The plan that was performed. */
     val plan: WorkoutPlan? = null,
+    /** Seconds the plank after the AMRAP was held; null when the plan had none (or it was not reached). */
+    val plankSeconds: Int? = null,
 ) {
     val score: WorkoutScore get() = WorkoutScore(rounds, extraReps, repsPerRound)
 

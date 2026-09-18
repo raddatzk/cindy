@@ -25,19 +25,17 @@ struct SignalExtractor: Sendable {
         case .face: return faceSignal(observation, for: exercise)
         case .pose: return poseSignal(observation, for: exercise)
         case .brightness: return brightnessSignal(observation)
-        case .depth: return depthSignal(observation, for: exercise)
+        case .depth: return depthSignal(observation)
         }
     }
 
     /// Median TrueDepth distance in metres; the nearest depths when the map is mostly holes because
-    /// the athlete is closer than the camera measures. A plank also needs the face: standing up next
-    /// to the phone is barely farther away than the plank itself.
-    func depthSignal(_ observation: FrameObservation, for exercise: Exercise) -> SignalSample {
+    /// the athlete is closer than the camera measures.
+    func depthSignal(_ observation: FrameObservation) -> SignalSample {
         guard let depth = observation.depth, abs(depth.age ?? 0) <= config.depthMaxAge else { return .missing(.depth) }
         let distance = depth.validFraction >= config.depthMinValidFraction ? depth.median : depth.p05
         guard let distance else { return .missing(.depth) }
-        let confidence = exercise.isHold ? observation.face?.confidence ?? 0 : 1
-        return SignalSample(value: distance, confidence: confidence, source: .depth)
+        return SignalSample(value: distance, confidence: 1, source: .depth)
     }
 
     /// Mean image brightness; always confident when measured.

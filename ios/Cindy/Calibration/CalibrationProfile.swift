@@ -37,23 +37,24 @@ struct CalibrationProfile: Codable, Equatable, Sendable {
         exercises[exercise.rawValue] = calibration
     }
 
-    /// Only a profile covering every exercise of the plan can start a workout.
+    /// Only a profile covering every exercise of the plan can start a workout; holds need none.
     func isComplete(for plan: WorkoutPlan) -> Bool {
-        plan.exercises.allSatisfy { exercises[$0.rawValue] != nil }
+        missingExercises(for: plan).isEmpty
     }
 
     var isComplete: Bool { isComplete(for: .cindy) }
 
     func missingExercises(for plan: WorkoutPlan) -> [Exercise] {
-        plan.exercises.filter { exercises[$0.rawValue] == nil }
+        plan.exercises.filter { $0.needsCalibration && exercises[$0.rawValue] == nil }
     }
 
     /// Drops calibrations measured on a different signal source than the config uses now
     /// (squats moved from the face to body pose); those exercises need a new calibration.
+    /// Plank calibrations from before the plank ran on a timer go as well.
     func removingOutdated(for config: SignalConfig) -> CalibrationProfile {
         var profile = self
         profile.exercises = exercises.filter { key, calibration in
-            guard let exercise = Exercise(rawValue: key) else { return false }
+            guard let exercise = Exercise(rawValue: key), exercise.needsCalibration else { return false }
             return calibration.source == config.source(for: exercise)
         }
         return profile

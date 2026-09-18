@@ -7,6 +7,10 @@ import Foundation
 /// `FrameLogger`. Everything here runs on the camera's `videoQueue`; the
 /// pipeline is swapped by dispatching onto that queue, so the swap never races
 /// a frame that is being processed.
+///
+/// Frames normally come from the video, with the latest depth map attached. For the depth
+/// signal they come from the depth maps alone and no video frame reaches the app
+/// (`setDepthDriven`), which spares the Vision requests.
 final class FrameProcessor {
     let camera: CameraSession
     let vision: VisionProcessor
@@ -20,6 +24,8 @@ final class FrameProcessor {
     private var measuresMetrics = false
     /// Written from the main actor and `depthQueue`, read on `videoQueue`.
     private let measuresDepth = LockedValue(false)
+    /// Written from the main actor, read on `depthQueue` and `videoQueue`.
+    private let depthDriven = LockedValue(false)
     private let latestDepth = LockedValue<(metrics: DepthMetrics, timestamp: TimeInterval)?>(nil)
 
     init(camera: CameraSession) {
@@ -49,13 +55,21 @@ final class FrameProcessor {
         }
     }
 
-    /// Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`,
-    /// depth keeps the face for the plank and the on-screen indicator.
-    func setDetection(for source: SignalSource) {
-        setDetection(face: source != .pose, bodyPose: source == .pose || source == .brightness)
+    /// Runs only what the signal source needs; brightness keeps face and pose for `BodyEvidence`.
+    /// The depth signal needs no video frames at all, and nil (a plank on its timer) needs nothing.
+    func setDetection(for source: SignalSource?) {
+        setDetection(face: source == .face || source == .brightness,
+                     bodyPose: source == .pose || source == .brightness)
         setMetricsEnabled(source == .brightness)
         setDepthEnabled(source == .depth)
-        if source == .depth { prepareDepth(for: [source]) }
+        setDepthDriven(source == .depth || source == nil)
+        if let source { prepareDepth(for: [source]) }
+    }
+
+    /// Frames from the depth maps instead of the video; the video output stops delivering.
+    func setDepthDriven(_ enabled: Bool) {
+        depthDriven.set(enabled)
+        camera.setVideoFramesEnabled(!enabled)
     }
 
     /// Adds the depth stream to the configured camera when any of `sources` needs it. Switching the
@@ -78,12 +92,19 @@ final class FrameProcessor {
     }
 
     private func handleDepth(_ depthData: AVDepthData, _ timestamp: CMTime) {
-        guard measuresDepth.get(), let metrics = DepthMetricsCalculator.measure(depthData) else { return }
-        latestDepth.set((metrics, timestamp.seconds))
+        guard measuresDepth.get(), var metrics = DepthMetricsCalculator.measure(depthData) else { return }
+        guard depthDriven.get() else {
+            latestDepth.set((metrics, timestamp.seconds))
+            return
+        }
+        metrics.age = 0
+        var observation = FrameObservation(timestamp: timestamp.seconds)
+        observation.depth = metrics
+        camera.videoQueue.async { self.process(observation) }
     }
 
     private func handle(_ buffer: CMSampleBuffer) {
-        guard var observation = vision.process(buffer) else { return }
+        guard !depthDriven.get(), var observation = vision.process(buffer) else { return }
         if measuresMetrics {
             observation.metrics = FrameMetricsCalculator.measure(buffer)
         }
@@ -92,6 +113,11 @@ final class FrameProcessor {
             depth.age = observation.timestamp - latest.timestamp
             observation.depth = depth
         }
+        process(observation)
+    }
+
+    /// Runs one frame through the pipeline, the logger and `onFrame`; on `videoQueue`.
+    private func process(_ observation: FrameObservation) {
         let output = pipeline?.process(observation)
         logger?.log(observation: observation, output: output, state: stateProvider?() ?? "")
         onFrame?(observation, output)

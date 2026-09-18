@@ -86,7 +86,7 @@ struct RepThresholds: Codable, Equatable, Sendable {
         case .pushUp: return RepThresholds(low: 0.06, high: 0.16, direction: .peak)
         case .squat: return RepThresholds(low: 0.006, high: 0.012, direction: .peak)
         case .pullUp: return RepThresholds(low: 0.0015, high: 0.003, direction: .trough)
-        case .plank: return RepThresholds(low: 0.04, high: 0.10, direction: .peak) // band, not a cycle
+        case .plank: return RepThresholds(low: 0.06, high: 0.16, direction: .peak) // unused: holds run on a timer
         }
     }
 }

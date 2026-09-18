@@ -69,7 +69,6 @@
 "Start (%lld/%lld)" = "Start (%1$lld/%2$lld)";
 "Hold the start position" = "Ausgangsposition halten";
 "Now: 1 %@" = "Jetzt: 1 %@";
-"Now: hold the plank still" = "Jetzt: Plank ruhig halten";
 "Detected" = "Erkannt";
 "Not detected" = "Nicht erkannt";
 "%@ s" = "%@ s";
@@ -92,7 +91,6 @@
 "Hang from the bar with straight arms and stay still. After the countdown: one pull-up until your chin is over the bar, then hang all the way down again." = "Häng dich mit gestreckten Armen an die Stange und bleib ruhig. Nach dem Countdown: ein Klimmzug bis das Kinn über der Stange ist, dann wieder ganz aushängen.";
 "Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top." = "Geh in die Liegestützposition mit gestreckten Armen, Gesicht über dem Handy. Nach dem Countdown: ein Liegestütz, dann wieder oben bleiben.";
 "Toes just behind the phone, then keep still; you can look wherever you like. After the countdown: one squat, then stand up straight again." = "Zehen knapp hinter dem Handy, dann still halten; schauen kannst du, wohin du willst. Nach dem Countdown: eine Kniebeuge, dann wieder aufrecht stehen.";
-"Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds." = "Geh in die Plank-Position, Gesicht über dem Handy, und bleib ruhig. Nach dem Countdown die Position 3 Sekunden halten.";
 "No person detected. Check light and position: your shoulders have to be above the camera and in the picture." = "Keine Person erkannt. Prüfe Licht und Position: Deine Schultern müssen über der Kamera und im Bild sein.";
 "The movement was detected but the start position was not reached again. Please start and end in the start position." = "Die Bewegung wurde erkannt, aber die Ausgangsposition nicht wieder erreicht. Bitte in der Ausgangsposition starten und dort wieder enden.";
 "The rep took %@ s. Plausible is %@–%@ s. Please repeat at a normal pace." = "Die Wiederholung dauerte %1$@ s. Plausibel sind %2$@–%3$@ s. Bitte in normalem Tempo wiederholen.";
@@ -260,5 +258,13 @@
 "Forearms on either side of the phone, face right above it." = "Unterarme links und rechts vom Handy, Gesicht direkt darüber.";
 "Move up" = "Nach oben";
 "Move down" = "Nach unten";
-"Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Reihenfolge per Ziehen ändern. Plank zählt in Sekunden und geht mit einer Einheit in den Score ein.";
+"Start %@" = "%@ starten";
+"Finish %@" = "%@ beenden";
+"Tap start once you are in position" = "Tippe auf Start, sobald du in Position bist";
+"Starting in %lld" = "Start in %lld";
+"%@, then %@" = "%@, danach %@";
+"Time is up" = "Die Zeit ist um";
+"Drag to reorder." = "Zum Umsortieren ziehen.";
+"After the AMRAP" = "Nach dem AMRAP";
+"Start it yourself once you are in position. It does not count towards the score." = "Du startest sie selbst, sobald du in Position bist. Sie zählt nicht zum Ergebnis.";
 "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep." = "Dieses iPhone hat keine Face-ID-Kamera, deshalb zählt Cindy nur anhand des Kamerabilds. Das ist weniger zuverlässig; korrigiere mit +1 und −1, wenn eine Wiederholung fehlt.";

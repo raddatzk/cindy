@@ -187,11 +187,22 @@ struct WorkoutStateMachineTests {
         plan.setEnabled(.plank, true)
         machine.replacePlan(plan)
         machine.activate()
+        // The plank waits for the end of the AMRAP: the squats still complete the round.
         let events = (0..<15).flatMap { _ in machine.registerRep() }
-        #expect(!events.contains(.roundCompleted(1)))
-        #expect(machine.exercise == .plank)
-        machine.activate()
-        #expect(machine.registerRep().contains(.roundCompleted(1)))
+        #expect(events.contains(.roundCompleted(1)))
+        #expect(machine.exercise == .pullUp)
+    }
+
+    @Test func thePlankOnlyFollowsARunningWorkoutWithAPlank() {
+        let machine = machineInPushUps(0)
+        machine.beginPlank()
+        #expect(machine.phase != .plank) // Cindy has no plank
+        var plan = WorkoutPlan.cindy
+        plan.setEnabled(.plank, true)
+        machine.replacePlan(plan)
+        machine.beginPlank()
+        #expect(machine.phase == .plank)
+        #expect(machine.isRunning == false)
     }
 
     @Test func finishedWorkoutKeepsItsPlan() {

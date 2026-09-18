@@ -66,7 +66,9 @@ Front camera (30 fps, exposure locked after 2 s)
   → VisionProcessor      VNDetectFaceRectanglesRequest and/or VNDetectHumanBodyPoseRequest, per exercise;
                          each keeps its own orientation search (the phone lies flat)
   → FrameMetrics         mean brightness of the frame (squats without TrueDepth)
-  → DepthMetrics         TrueDepth distances: valid share, percentiles, median (squats, push-ups, plank)
+  → DepthMetrics         TrueDepth distances: valid share, percentiles, median (squats, push-ups);
+                         for the depth signal the depth maps are the frames and no video frame
+                         reaches the app (no Vision request runs)
   → SignalExtractor      one Float per frame for the expected exercise (+ confidence)
   → MedianFilter         5 samples, body pose and depth only (single-frame outliers)
   → EMAFilter            alpha 0.3 per 30 fps frame, scaled to the frame interval
@@ -83,9 +85,9 @@ Front camera (30 fps, exposure locked after 2 s)
 | Push-up  | `.depth` (`.face`)            | face bounding-box area          | nose y         | mean luma     | median distance           | arms extended |
 | Squat    | `.depth` (`.brightness`)      | face area (+ optional centre-y) | shoulder width | mean luma     | median distance           | standing      |
 | Pull-up  | `.face`                       | face area (+ optional centre-y) | shoulder y     | mean luma     | median distance           | dead hang     |
-| Plank    | `.depth` (`.face`)            | face area held inside a band    | nose y         | mean luma     | distance band + face seen | plank         |
+| Plank    | none (timer after AMRAP)      | –                               | –              | –             | –                         | plank         |
 
-On phones with a TrueDepth front camera, squats, push-ups and the plank count on the
+On phones with a TrueDepth front camera, squats and push-ups count on the
 depth map since the recordings of 2026-09-17 (`shared/fixtures/recorded_*_depth.csv`).
 The signal is the median distance of the whole map: standing ~1.3 m, 0.4–0.75 m at
 the bottom of every squat whichever way the athlete looks. At the bottom of a push-up
@@ -93,12 +95,13 @@ the athlete is closer than the camera measures and most of the map is holes; bel
 50 % valid pixels the signal is the 5th percentile instead (~0.16 m). Depth thresholds
 hang off the rest distance (leave at 25 %, peak at 50 % of the calibrated swing), so a
 squat shallower than the calibration one still counts, and scale with the rest distance
-like face sizes. The plank only holds while the face is also seen: getting up next to
-the phone is barely farther away than the plank. Phones without TrueDepth (the iPhone SE
-and the iPhone Duo, which has Touch ID) cannot be excluded from the App Store — there is
-no required device capability for it — so they keep the face for push-ups and plank and
-the brightness for squats, and the intro tells them counting is less reliable there. The
-Android app has no depth either.
+like face sizes. Phones without TrueDepth (the iPhone SE and the iPhone Duo, which has
+Touch ID) cannot be excluded from the App Store — there is no required device capability
+for it — so they keep the face for push-ups and the brightness for squats, and the intro
+tells them counting is less reliable there. The Android app has no depth either.
+
+The camera preview is off by default in calibration and workout (a button shows it);
+counting needs no picture. The debug recorder always shows it.
 
 Without TrueDepth, squats count on the brightness since the device recordings of 2026-09-14
 (`shared/fixtures/recorded_squats_*`): from the floor the face is only found
@@ -142,9 +145,12 @@ the hard-coded debug thresholds.
 `Workout anpassen` on the start screen edits the round: enable/disable exercises,
 reps per exercise (seconds for the plank), order by drag and the AMRAP duration.
 The plan is persisted in UserDefaults; "Original Cindy" restores 5/10/15 in 20 min.
-The plank is a hold: `HoldDetector` accumulates time while the smoothed face signal
-stays inside the calibrated band and pauses (without reset) when it leaves the
-band or the face is lost. A completed hold counts as one unit in the score.
+The plank is not part of the round: it follows once, after the AMRAP clock has run out
+(`WorkoutPlan.plankSeconds`, `WorkoutPhase.plank`). The score is final by then and the
+camera is off. Once in position the athlete taps start, a 3 s countdown runs, then the
+clock runs to the target (beeping every 10 s) or until they tap finish; there is no
+pause. The seconds held are stored with the record (`plankSeconds`), outside the score.
+Plans saved while the plank was a round exercise move it behind the AMRAP when decoded.
 
 The pause screen opens the same editor on the running workout (`PlanEditorList`,
 `WorkoutEngine.updatePlan`). Only calibrated exercises can be added, and only

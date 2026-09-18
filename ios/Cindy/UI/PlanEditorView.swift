@@ -55,9 +55,9 @@ struct PlanEditorList<Trailing: View>: View {
             } header: {
                 Text(L("Exercises per round"))
             } footer: {
-                Text(L("Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score."))
+                Text(L("Drag to reorder."))
             }
-            let missing = addable.filter { !plan.contains($0) }
+            let missing = addable.filter { !$0.isHold && !plan.contains($0) }
             if !missing.isEmpty {
                 Section(L("Not in the plan")) {
                     ForEach(missing) { exercise in
@@ -69,7 +69,30 @@ struct PlanEditorList<Trailing: View>: View {
                     }
                 }
             }
+            plankSection
             trailing
+        }
+    }
+
+    /// The plank is not part of the round: it follows once, after the AMRAP clock has run out.
+    private var plankSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { plan.hasPlank }, set: { plan.setEnabled(.plank, $0) })) {
+                Text(Exercise.plank.displayName)
+            }
+            if let seconds = plan.plankSeconds {
+                HStack {
+                    Stepper(value: Binding(get: { seconds }, set: { plan.setTarget($0, for: .plank) }),
+                            in: WorkoutPlan.targetRange(for: .plank), step: 5) {
+                        Text(verbatim: "\(seconds) \(Exercise.plank.unit)")
+                    }
+                    ExerciseDemoButton(exercise: .plank, style: .icon)
+                }
+            }
+        } header: {
+            Text(L("After the AMRAP"))
+        } footer: {
+            Text(L("Start it yourself once you are in position. It does not count towards the score."))
         }
     }
 
@@ -81,8 +104,7 @@ struct PlanEditorList<Trailing: View>: View {
                     get: { plan.target(for: set.exercise) },
                     set: { plan.setTarget($0, for: set.exercise) }
                 ),
-                in: WorkoutPlan.targetRange(for: set.exercise),
-                step: set.exercise.isHold ? 5 : 1
+                in: WorkoutPlan.targetRange(for: set.exercise)
             ) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(set.exercise.displayName)

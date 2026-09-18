@@ -5,13 +5,16 @@ enum Exercise: String, Codable, CaseIterable, Identifiable, Sendable {
     case pullUp
     case pushUp
     case squat
-    /// Time-based hold: the face stays at a constant distance, the clock runs.
+    /// Time-based hold on a timer the athlete starts; the camera measures nothing.
     case plank
 
     var id: String { rawValue }
 
     /// true for exercises measured in seconds instead of reps.
     var isHold: Bool { self == .plank }
+
+    /// Holds run on a timer the athlete starts, so only rep exercises are calibrated.
+    var needsCalibration: Bool { !isHold }
 
     /// Default target per round: reps for movements, seconds for holds.
     var defaultTarget: Int {
@@ -61,7 +64,7 @@ enum Exercise: String, Codable, CaseIterable, Identifiable, Sendable {
         case .pullUp: return .trough // hanging = face closest → largest area; chin over bar = smaller
         case .pushUp: return .peak   // top = face far → small area; bottom = close → large
         case .squat: return .peak    // standing = far; bottom of squat = closer
-        case .plank: return .peak    // unused: holds use a band, not a cycle
+        case .plank: return .peak    // unused: holds run on a timer
         }
     }
 }

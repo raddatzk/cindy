@@ -41,7 +41,7 @@ struct StartView: View {
             Text(L("AMRAP \(model.plan.durationMinutes) min"))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(model.plan.summary)
+            Text(model.plan.summaryWithPlank)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

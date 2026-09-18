@@ -94,7 +94,7 @@ final class HealthExporter: Sendable {
             Self.metadataPrefix + "completed": sample.completed,
         ]
         if let plan = record.plan {
-            metadata[Self.metadataPrefix + "plan"] = plan.summary
+            metadata[Self.metadataPrefix + "plan"] = plan.summaryWithPlank
         }
         return metadata
     }

@@ -98,7 +98,7 @@ private struct WorkoutScreen: View {
         VStack(spacing: 12) {
             topBar
             Spacer(minLength: 0)
-            timer
+            if engine.phase == .plank { finalScore } else { timer }
             exerciseBlock
             Spacer(minLength: 0)
             statusLine
@@ -153,6 +153,20 @@ private struct WorkoutScreen: View {
 
     private var isLastMinute: Bool { engine.remaining <= 60 }
 
+    /// Once the AMRAP is over the clock has nothing left to say; the score is final.
+    private var finalScore: some View {
+        VStack(spacing: 0) {
+            Text(L("Time is up"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(engine.score.notation)
+                .font(.system(size: 72, weight: .bold, design: .rounded).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private var exerciseBlock: some View {
         VStack(spacing: 4) {
             Text(engine.exercise.displayName)
@@ -181,14 +195,45 @@ private struct WorkoutScreen: View {
                              total: Double(engine.plan.target(for: engine.exercise)))
                     .tint(.brand)
                     .frame(maxWidth: 240)
-            }
-            if engine.phase == .transition {
+                holdControl
+            } else if engine.phase == .transition {
                 transitionBanner
             } else if engine.plan.sets.count > 1 {
                 Text(L("Up next: \(engine.nextExercise.displayName)"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// The plank runs on a timer: the athlete starts it once in position and may end it early.
+    @ViewBuilder
+    private var holdControl: some View {
+        if let countdown = engine.holdCountdown {
+            Text(verbatim: "\(countdown)")
+                .font(.system(size: 56, weight: .black, design: .rounded))
+                .foregroundStyle(.brand)
+                .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
+                .accessibilityLabel(L("Starting in \(countdown)"))
+        } else if !engine.isPlankRunning {
+            Button {
+                engine.startPlank()
+            } label: {
+                Label(L("Start \(engine.exercise.displayName)"), systemImage: "play.fill")
+                    .font(.title2.bold())
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+            }
+            .brandProminentButtonStyle()
+        } else {
+            Button {
+                engine.finishPlank()
+            } label: {
+                Label(L("Finish \(engine.exercise.displayName)"), systemImage: "checkmark")
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
         }
     }
 
@@ -212,34 +257,46 @@ private struct WorkoutScreen: View {
     /// with the state, so nothing depends on seeing the colour.
     private var statusLine: some View {
         HStack(spacing: 16) {
-            Label {
-                if engine.trackedSource == .face {
-                    Text(engine.subjectDetected ? L("Face") : L("No face"))
-                } else {
-                    Text(engine.subjectDetected ? L("Person") : L("No person"))
-                }
-            } icon: {
-                Image(systemName: engine.trackedSource == .face
-                      ? (engine.subjectDetected ? "face.smiling" : "face.dashed")
-                      : (engine.subjectDetected ? "figure.stand" : "person.fill.questionmark"))
-                    .foregroundStyle(engine.subjectDetected ? Color.green : Color.brand)
-            }
+            // Nothing is measured during the plank, so there is nobody to detect.
+            if engine.phase != .plank { subjectLabel }
             Label {
                 Text(statusText)
                     .foregroundStyle(.secondary)
             } icon: {
-                Image(systemName: engine.isSignalArmed ? "waveform.path.ecg" : "hourglass")
+                Image(systemName: statusIcon)
                     .foregroundStyle(engine.isSignalArmed ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
             }
         }
         .font(.footnote)
     }
 
+    private var statusIcon: String {
+        if engine.phase == .plank { return engine.isPlankRunning ? "timer" : "hand.tap" }
+        return engine.isSignalArmed ? "waveform.path.ecg" : "hourglass"
+    }
+
+    private var subjectLabel: some View {
+        Label {
+            if engine.trackedSource == .face {
+                Text(engine.subjectDetected ? L("Face") : L("No face"))
+            } else {
+                Text(engine.subjectDetected ? L("Person") : L("No person"))
+            }
+        } icon: {
+            Image(systemName: engine.trackedSource == .face
+                  ? (engine.subjectDetected ? "face.smiling" : "face.dashed")
+                  : (engine.subjectDetected ? "figure.stand" : "person.fill.questionmark"))
+                .foregroundStyle(engine.subjectDetected ? Color.green : Color.brand)
+        }
+    }
+
     private var statusText: String {
         switch engine.phase {
+        case .plank:
+            if engine.isPlankRunning { return L("Hold") }
+            return engine.holdCountdown == nil ? L("Tap start once you are in position") : L("Get ready")
         case .transition: return L("Waiting for start position")
         case .active:
-            if engine.exercise.isHold { return engine.isSignalArmed ? L("Hold") : L("Signal lost") }
             return engine.isSignalArmed ? L("Counting") : L("Signal lost")
         case .paused: return L("Paused")
         default: return ""
@@ -248,43 +305,10 @@ private struct WorkoutScreen: View {
 
     private var controls: some View {
         VStack(spacing: 12) {
+            // The score is final during the plank, and the plank has no pause.
+            if engine.phase != .plank { adjustButtons }
             HStack(spacing: 16) {
-                Button {
-                    engine.adjust(by: -1)
-                } label: {
-                    Text(verbatim: "−1")
-                        .font(.title.bold())
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-                // "−1" is a typographic minus, which neither VoiceOver nor
-                // Voice Control reads as anything sayable.
-                .accessibilityLabel(L("One rep less"))
-                .accessibilityInputLabels([L("One rep less"), L("Minus one")])
-                Button {
-                    engine.adjust(by: 1)
-                } label: {
-                    Text(verbatim: "+1")
-                        .font(.title.bold())
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityLabel(L("One rep more"))
-                .accessibilityInputLabels([L("One rep more"), L("Plus one")])
-            }
-            HStack(spacing: 16) {
-                Button {
-                    if engine.isPaused { engine.resume() } else { engine.pause() }
-                } label: {
-                    Label(engine.isPaused ? L("Resume") : L("Pause"), systemImage: engine.isPaused ? "play.fill" : "pause.fill")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .brandProminentButtonStyle()
-                .disabled(engine.phase == .countdown || engine.phase == .finished
-                          || engine.cameraInterruption != nil)
+                if engine.phase != .plank { pauseButton }
                 Button(role: .destructive) {
                     confirmAbort = true
                 } label: {
@@ -296,6 +320,48 @@ private struct WorkoutScreen: View {
             }
         }
         .disabled(engine.phase == .finished)
+    }
+
+    private var adjustButtons: some View {
+        HStack(spacing: 16) {
+            Button {
+                engine.adjust(by: -1)
+            } label: {
+                Text(verbatim: "−1")
+                    .font(.title.bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.bordered)
+            // "−1" is a typographic minus, which neither VoiceOver nor
+            // Voice Control reads as anything sayable.
+            .accessibilityLabel(L("One rep less"))
+            .accessibilityInputLabels([L("One rep less"), L("Minus one")])
+            Button {
+                engine.adjust(by: 1)
+            } label: {
+                Text(verbatim: "+1")
+                    .font(.title.bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(L("One rep more"))
+            .accessibilityInputLabels([L("One rep more"), L("Plus one")])
+        }
+    }
+
+    private var pauseButton: some View {
+        Button {
+            if engine.isPaused { engine.resume() } else { engine.pause() }
+        } label: {
+            Label(engine.isPaused ? L("Resume") : L("Pause"), systemImage: engine.isPaused ? "play.fill" : "pause.fill")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
+        .brandProminentButtonStyle()
+        .disabled(engine.phase == .countdown || engine.phase == .finished
+                  || engine.cameraInterruption != nil)
     }
 
     private var countdownOverlay: some View {

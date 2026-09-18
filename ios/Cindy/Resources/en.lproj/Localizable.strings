@@ -67,7 +67,6 @@
 "fastest %lld s · slowest %lld s" = "fastest %lld s · slowest %lld s";
 "First saved workout" = "First saved workout";
 "Forearms on the floor, elbows under your shoulders, face above the phone." = "Forearms on the floor, elbows under your shoulders, face above the phone.";
-"Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds." = "Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds.";
 "Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top." = "Get into the push-up position with straight arms, face above the phone. After the countdown: one push-up, then stay at the top.";
 "Get ready" = "Get ready";
 "Go for your usual plan." = "Go for your usual plan.";
@@ -111,7 +110,6 @@
 "Notifications are switched off for Cindy. Turn them on in Settings › Apps › Cindy › Notifications." = "Notifications are switched off for Cindy. Turn them on in Settings › Apps › Cindy › Notifications.";
 "Now do" = "Now do";
 "Now: 1 %@" = "Now: 1 %@";
-"Now: hold the plank still" = "Now: hold the plank still";
 "One calibration first" = "One calibration first";
 "One rep of each, one after another: %@. Hold still in the start position before every countdown." = "One rep of each, one after another: %@. Hold still in the start position before every countdown.";
 "Open Settings" = "Open Settings";
@@ -235,5 +233,13 @@
 "Forearms on either side of the phone, face right above it." = "Forearms on either side of the phone, face right above it.";
 "Move up" = "Move up";
 "Move down" = "Move down";
-"Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score." = "Drag to reorder. The plank is measured in seconds and counts as a single unit towards the score.";
+"Start %@" = "Start %@";
+"Finish %@" = "Finish %@";
+"Tap start once you are in position" = "Tap start once you are in position";
+"Starting in %lld" = "Starting in %lld";
+"%@, then %@" = "%@, then %@";
+"Time is up" = "Time is up";
+"Drag to reorder." = "Drag to reorder.";
+"After the AMRAP" = "After the AMRAP";
+"Start it yourself once you are in position. It does not count towards the score." = "Start it yourself once you are in position. It does not count towards the score.";
 "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep." = "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep.";

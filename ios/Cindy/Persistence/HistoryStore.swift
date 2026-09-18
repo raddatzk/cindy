@@ -14,6 +14,8 @@ struct WorkoutRecord: Codable, Hashable, Identifiable, Sendable {
     var roundTimestamps: [TimeInterval]?
     /// The plan that was performed.
     var plan: WorkoutPlan?
+    /// Seconds the plank after the AMRAP was held; nil when the plan had none (or it was not reached).
+    var plankSeconds: Int?
 
     var score: WorkoutScore { WorkoutScore(rounds: rounds, reps: extraReps, repsPerRound: repsPerRound) }
 

@@ -30,8 +30,12 @@ final class WorkoutEngine {
     private(set) var result: WorkoutRecord?
 
     var remaining: TimeInterval { max(plan.duration - elapsed, 0) }
-    /// Accumulated plank time of the current hold (nil for rep exercises).
+    /// Time held in the plank after the AMRAP (nil before it).
     private(set) var heldSeconds: TimeInterval?
+    /// Counts down after the athlete tapped start on the plank; `nil` when none is running.
+    private(set) var holdCountdown: Int?
+    /// Whether the plank clock runs.
+    var isPlankRunning: Bool { holdStart != nil }
     /// The exercise after the current one (for the on-screen hint).
     var nextExercise: Exercise { plan.next(after: exercise) }
     var isPaused: Bool { phase == .paused }
@@ -50,6 +54,9 @@ final class WorkoutEngine {
     private var segmentStart: Date?
     private var countdownTask: Task<Void, Never>?
     private var resumeTask: Task<Void, Never>?
+    private var holdCountdownTask: Task<Void, Never>?
+    private var holdStart: Date?
+    private var holdTimer: Timer?
     /// Whether the current pause is one the interruption caused rather than one
     /// the athlete asked for. Only the former picks itself back up.
     private var pausedByInterruption = false
@@ -85,9 +92,9 @@ final class WorkoutEngine {
     var logFileURL: URL? { logger?.url }
     var isLogging: Bool { logger != nil }
 
-    /// Exercises that can join the plan mid-workout: only calibrated ones can be counted.
+    /// Exercises that can join the plan mid-workout: only calibrated ones can be counted; holds run on a timer.
     var calibratedExercises: [Exercise] {
-        Exercise.allCases.filter { profile.calibration(for: $0) != nil }
+        Exercise.allCases.filter { !$0.needsCalibration || profile.calibration(for: $0) != nil }
     }
 
     /// Shortest AMRAP length the clock has not passed yet.
@@ -148,6 +155,38 @@ final class WorkoutEngine {
         sync()
     }
 
+    /// The athlete is in the plank and tapped start: a short countdown, then the clock runs until the
+    /// plank's target (or until they tap finish), and the workout is over.
+    func startPlank() {
+        guard machine.phase == .plank, holdStart == nil, holdCountdownTask == nil else { return }
+        audio.prepare()
+        holdCountdownTask = Task { [weak self] in
+            guard let self else { return }
+            for remaining in stride(from: self.config.holdCountdownSeconds, through: 1, by: -1) {
+                self.holdCountdown = remaining
+                self.audio.beep()
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+            }
+            self.holdCountdown = nil
+            self.holdCountdownTask = nil
+            guard self.machine.phase == .plank else { return }
+            self.audio.goSignal()
+            self.holdStart = Date()
+            let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tickPlank() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.holdTimer = timer
+        }
+    }
+
+    /// Ends the plank before its target; the time held so far is recorded.
+    func finishPlank() {
+        guard machine.phase == .plank else { return }
+        finishWorkout(completed: true)
+    }
+
     func resume() {
         guard machine.phase == .paused, cameraInterruption == nil else { return }
         cancelAutoResume()
@@ -166,7 +205,8 @@ final class WorkoutEngine {
         guard phase != .finished, phase != .idle else { return }
         cancelAutoResume()
         countdownTask?.cancel()
-        finishWorkout(completed: false)
+        // Stopping during the plank ends it early; the AMRAP itself was complete.
+        finishWorkout(completed: machine.phase == .plank)
     }
 
     func adjust(by delta: Int) {
@@ -212,13 +252,47 @@ final class WorkoutEngine {
     private func installPipeline(for exercise: Exercise) {
         guard let calibration = profile.calibration(for: exercise) else { return }
         let pipeline = SignalPipeline(exercise: exercise, thresholds: calibration.thresholds,
-                                      source: calibration.source, config: config,
-                                      holdSeconds: exercise.isHold ? TimeInterval(plan.target(for: exercise)) : nil)
+                                      source: calibration.source, config: config)
         trackedSource = calibration.source
         processor.setDetection(for: calibration.source)
         processor.setPipeline(pipeline)
         isSignalArmed = false
-        heldSeconds = exercise.isHold ? 0 : nil
+    }
+
+    /// The AMRAP clock ran out. With a plank in the plan the camera stops and the plank waits for
+    /// the athlete's start; otherwise the workout is over.
+    private func endAmrap() {
+        guard plan.hasPlank else {
+            finishWorkout(completed: true)
+            return
+        }
+        stopClock()
+        elapsed = plan.duration
+        processor.setPipeline(nil)
+        stopCamera()
+        machine.beginPlank()
+        heldSeconds = 0
+        audio.endSignal()
+        sync()
+    }
+
+    private func cancelHoldCountdown() {
+        holdCountdownTask?.cancel()
+        holdCountdownTask = nil
+        holdCountdown = nil
+    }
+
+    /// Advances the plank clock; beeps every 10 s and ends the workout at the target.
+    private func tickPlank() {
+        guard let holdStart, machine.phase == .plank else { return }
+        let held = Date().timeIntervalSince(holdStart)
+        let target = plan.target(for: .plank)
+        let previous = Int(heldSeconds ?? 0)
+        heldSeconds = held
+        if Int(held) / 10 > previous / 10, Int(held) < target {
+            audio.beep() // every 10 s of plank
+        }
+        if held >= TimeInterval(target) { finishWorkout(completed: true) }
     }
 
     /// A workout cannot count what it cannot see. Losing the camera pauses it
@@ -281,13 +355,6 @@ final class WorkoutEngine {
         // Ignore stale frames from a pipeline that has already been replaced.
         guard output.exercise == machine.exercise else { return }
         isSignalArmed = output.isArmed
-        if let held = output.heldSeconds {
-            let previous = Int(heldSeconds ?? 0)
-            heldSeconds = held
-            if Int(held) / 10 > previous / 10, Int(held) < plan.target(for: output.exercise) {
-                audio.beep() // every 10 s of plank
-            }
-        }
         switch output.event {
         case .armed:
             if machine.phase == .transition {
@@ -328,7 +395,7 @@ final class WorkoutEngine {
 
     private func sync() {
         phase = machine.phase
-        exercise = machine.exercise
+        exercise = machine.phase == .plank ? .plank : machine.exercise
         repCount = machine.repCount
         currentRound = machine.currentRound
         score = machine.score
@@ -370,12 +437,16 @@ final class WorkoutEngine {
         guard let segmentStart else { return }
         elapsed = accumulated + Date().timeIntervalSince(segmentStart)
         if remaining <= 0 {
-            finishWorkout(completed: true)
+            endAmrap()
         }
     }
 
     private func finishWorkout(completed: Bool) {
+        cancelHoldCountdown()
+        holdTimer?.invalidate()
+        holdTimer = nil
         stopClock()
+        let reachedPlank = machine.phase == .plank
         let events = machine.finish()
         guard !events.isEmpty || result == nil else { return }
         processor.setPipeline(nil)
@@ -384,7 +455,8 @@ final class WorkoutEngine {
         // A plan changed mid-workout is recorded as it stood at the end.
         result = WorkoutRecord(date: Date(), rounds: score.rounds, extraReps: score.reps,
                                durationSeconds: min(elapsed, plan.duration), completed: completed,
-                               repsPerRound: plan.repsPerRound, roundTimestamps: roundTimestamps, plan: plan)
+                               repsPerRound: plan.repsPerRound, roundTimestamps: roundTimestamps, plan: plan,
+                               plankSeconds: reachedPlank ? Int(heldSeconds ?? 0) : nil)
         if completed {
             audio.endSignal()
         }
@@ -392,11 +464,16 @@ final class WorkoutEngine {
     }
 
     private func teardown() {
+        stopCamera()
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+
+    /// Stops the camera and closes the CSV; the screen stays awake for the plank.
+    private func stopCamera() {
         guard cameraRunning else { return }
         camera.stop()
         cameraRunning = false
         processor.setLogger(nil)
         logger?.close()
-        UIApplication.shared.isIdleTimerDisabled = false
     }
 }

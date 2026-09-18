@@ -119,4 +119,23 @@ struct CalibrationAnalyzerTests {
         #expect(loaded.missingExercises(for: .cindy) == [.squat])
         #expect(loaded.calibration(for: .pushUp) != nil)
     }
+
+    @Test func thePlankNeedsNoCalibration() {
+        var plan = WorkoutPlan.cindy
+        plan.setEnabled(.plank, true)
+        var profile = CalibrationProfile()
+        for exercise in WorkoutPlan.cindy.exercises {
+            profile.set(ExerciseCalibration(source: SignalConfig.default.source(for: exercise), minValue: 0.1,
+                                            maxValue: 0.3, baseline: 0.1, low: 0.15, high: 0.25,
+                                            direction: exercise.defaultRepDirection, repDuration: 1.2,
+                                            calibratedAt: Date()), for: exercise)
+        }
+        #expect(profile.missingExercises(for: plan).isEmpty)
+        #expect(profile.isComplete(for: plan))
+        // A plank calibration from before the timer is dropped on load.
+        profile.set(ExerciseCalibration(source: SignalConfig.default.source(for: .plank), minValue: 0.1, maxValue: 0.3,
+                                        baseline: 0.2, low: 0.15, high: 0.25, direction: .peak, repDuration: 3,
+                                        calibratedAt: Date()), for: .plank)
+        #expect(profile.removingOutdated(for: .default).calibration(for: .plank) == nil)
+    }
 }

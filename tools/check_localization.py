@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 STRING_HINTS = (
     "formattedDecimal", "formattedPercent", "displayName", "singularName",
     "summary", "notation", "exerciseList", "localizedDescription", "reserveText",
-    "recordingSizePerSession", "format(", "name(", "title", "reason", "names",
+    "recordingSizePerSession", "format(", "name(", "title", "reason", "names", "plankSummary",
     # Any `.formatted(…)` produces a String, whatever it started as.
     ".formatted(",
 )

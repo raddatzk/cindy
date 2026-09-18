@@ -8,6 +8,8 @@ enum WorkoutPhase: Equatable, Sendable {
     /// Last rep of an exercise done; waiting for the next exercise's signal to stabilise.
     case transition
     case paused
+    /// The AMRAP clock ran out and the plan has a plank: the score is final, the plank follows.
+    case plank
     case finished
 }
 
@@ -91,6 +93,12 @@ final class WorkoutStateMachine {
         guard phase == .paused else { return }
         // Always come back through a transition so the detector re-arms.
         phase = .transition
+    }
+
+    /// The AMRAP is over; the plank of the plan comes next. The score stays as it is.
+    func beginPlank() {
+        guard isRunning, plan.hasPlank else { return }
+        phase = .plank
     }
 
     @discardableResult

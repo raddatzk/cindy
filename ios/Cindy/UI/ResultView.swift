@@ -20,6 +20,11 @@ struct ResultView: View {
                 .font(.system(size: 96, weight: .black, design: .rounded).monospacedDigit())
             Text(L("\(record.rounds) rounds + \(record.extraReps) reps · \(record.score.totalReps) total reps"))
                 .foregroundStyle(.secondary)
+            if let plankSeconds = record.plankSeconds {
+                // Held after the AMRAP, outside the score.
+                Label(ExerciseSet(exercise: .plank, target: plankSeconds).label, systemImage: "timer")
+                    .foregroundStyle(.secondary)
+            }
             comparison
             RoundChart(record: record)
             recommendationCard
@@ -52,7 +57,7 @@ struct ResultView: View {
             Text(rec.reason)
                 .font(.subheadline)
             if rec.changesPlan {
-                Text(L("\(rec.plan.durationMinutes) min · \(rec.plan.summary)"))
+                Text(L("\(rec.plan.durationMinutes) min · \(rec.plan.summaryWithPlank)"))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Button {

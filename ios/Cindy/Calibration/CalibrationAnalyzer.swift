@@ -73,30 +73,6 @@ struct CalibrationAnalyzer: Sendable {
         )
     }
 
-    /// Hold calibration (plank): after `calibrationHoldDuration` seconds of
-    /// confident samples the band is the observed min/max widened by
-    /// `calibrationHoldBandMargin` of the mean (at least the observed spread).
-    func evaluateHold(_ trace: [CalibrationSample]) -> ExerciseCalibration? {
-        guard let first = trace.first, let last = trace.last,
-              last.timestamp - first.timestamp >= config.calibrationHoldDuration,
-              trace.count >= config.calibrationBaselineMinSamples else { return nil }
-        let values = trace.map(\.value)
-        let mean = values.reduce(0, +) / Float(values.count)
-        let observedMin = values.min() ?? mean
-        let observedMax = values.max() ?? mean
-        let margin = source == .depth ? config.depthHoldBandMargin : config.calibrationHoldBandMargin
-        let halfBand = Swift.max((observedMax - observedMin) / 2, margin * abs(mean))
-        return ExerciseCalibration(
-            source: source, minValue: observedMin, maxValue: observedMax, baseline: mean,
-            low: mean - halfBand, high: mean + halfBand, direction: .peak,
-            repDuration: config.calibrationHoldDuration, calibratedAt: Date()
-        )
-    }
-
-    func diagnoseHold(_ trace: [CalibrationSample]) -> CalibrationFailure {
-        trace.count < config.calibrationBaselineMinSamples ? noSubject : .noReturn
-    }
-
     /// Best explanation for why `evaluate` has not succeeded (used on timeout).
     func diagnose(_ trace: [CalibrationSample]) -> CalibrationFailure {
         guard let stats = stats(of: trace) else { return noSubject }
@@ -107,8 +83,7 @@ struct CalibrationAnalyzer: Sendable {
 
     // MARK: - Internals
 
-    /// The depth signal's plank needs the face; without depth maps at all there is no better hint.
-    private var noSubject: CalibrationFailure { source == .face || source == .depth ? .noFace : .noPerson }
+    private var noSubject: CalibrationFailure { source == .face ? .noFace : .noPerson }
 
     struct TraceStats {
         var baseline: Float

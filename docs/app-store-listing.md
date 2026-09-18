@@ -72,15 +72,15 @@ frame by frame, and is never stored, never recorded and never transmitted. What
 leaves a frame is a few numbers about your movement. Nothing else.
 
 BUILT AROUND YOUR BODY, NOT AN AVERAGE
-A short calibration measures how your own push-up, pull-up, squat and plank look
-to the camera. The thresholds that decide what counts as a rep come from that
+A short calibration measures how your own push-up, pull-up and squat look to
+the camera. The thresholds that decide what counts as a rep come from that
 measurement, not from a table, which is why counting works whether you are tall
 or short and whether the phone sits near your hands or near your feet.
 
 YOUR WORKOUT, YOUR RULES
 Edit the round: turn exercises on and off, set the reps for each, reorder them
-by dragging, change the duration, add a plank as a timed hold. One tap restores
-the original 5 / 10 / 15 in 20 minutes.
+by dragging, change the duration, add a plank to hold once the clock has run
+out. One tap restores the original 5 / 10 / 15 in 20 minutes.
 
 A SUGGESTION FOR NEXT TIME
 Every round is timed. Afterwards you get a chart of your round times, a reading
@@ -150,16 +150,16 @@ nicht übertragen. Aus einem Bild bleiben ein paar Zahlen zu deiner Bewegung
 übrig. Sonst nichts.
 
 AUF DEINEN KÖRPER EINGESTELLT, NICHT AUF EINEN DURCHSCHNITT
-Eine kurze Kalibrierung misst, wie dein Liegestütz, dein Klimmzug, deine
-Kniebeuge und deine Plank für die Kamera aussehen. Die Schwellen, ab denen etwas
+Eine kurze Kalibrierung misst, wie dein Liegestütz, dein Klimmzug und deine
+Kniebeuge für die Kamera aussehen. Die Schwellen, ab denen etwas
 als Wiederholung zählt, stammen aus dieser Messung und nicht aus einer Tabelle.
 Deshalb zählt es richtig, ob du groß bist oder klein und ob das Handy näher bei
 deinen Händen oder bei deinen Füßen liegt.
 
 DEIN WORKOUT, DEINE REGELN
 Stell die Runde um: Übungen an- und abschalten, Wiederholungen festlegen,
-Reihenfolge per Fingerzug ändern, Dauer anpassen, eine Plank als Haltezeit
-ergänzen. Ein Tipp stellt das Original wieder her, 5 / 10 / 15 in 20 Minuten.
+Reihenfolge per Fingerzug ändern, Dauer anpassen, eine Plank für nach Ablauf
+der Zeit ergänzen. Ein Tipp stellt das Original wieder her, 5 / 10 / 15 in 20 Minuten.
 
 EIN VORSCHLAG FÜRS NÄCHSTE MAL
 Jede Runde wird gestoppt. Danach siehst du deine Rundenzeiten als Kurve, wie
@@ -227,9 +227,9 @@ Written in English; App Store Connect has one review-notes field, not one per
 language.
 
 The desk-test recipe below follows from how the signals work — bringing the
-phone closer shortens the TrueDepth distance (push-ups, squats, plank on phones
-with Face ID) and makes the face bounding box grow (pull-ups; push-ups and plank
-without Face ID), and darkens the picture while the face grows (squats without
+phone closer shortens the TrueDepth distance (push-ups and squats on phones with
+Face ID) and makes the face bounding box grow (pull-ups; push-ups without Face
+ID), and darkens the picture while the face grows (squats without
 Face ID: brightness with the face as a plausibility check), which is the same
 shape as a rep — but it has not been run on a device yet. Confirm it during the device
 test before submitting: review notes that do not work are how a submission ends
@@ -251,13 +251,14 @@ push-ups:
    the counter advances, and a higher tone marks the exercise change after the
    configured number of reps.
 
-On an iPhone with Face ID, push-ups, squats and the plank are measured with the
-TrueDepth camera's depth map: how far away the nearest body is. For pull-ups the
+On an iPhone with Face ID, push-ups and squats are measured with the TrueDepth
+camera's depth map: how far away the nearest body is. For pull-ups the
 signal is how large your face appears in the frame. On iPhones without Face ID,
 push-ups use the face size as well and squats how dark the picture gets,
 accepted only when your face grows at the same time. Moving the phone closer
 does all of that, which is why it behaves exactly like a rep. Reviewing from a
-chair works.
+chair works. The optional plank is not measured: it follows once the clock has
+run out, and you start and end it with a tap.
 
 WHAT THE APP DOES WITH THE CAMERA
 

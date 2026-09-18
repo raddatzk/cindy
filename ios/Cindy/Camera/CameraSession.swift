@@ -189,6 +189,15 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
     // MARK: - Depth
 
+    /// Starts or stops the delivery of video frames to `frameHandler`. The preview has its own
+    /// connection and keeps running; the depth stream does not need the video frames either.
+    func setVideoFramesEnabled(_ enabled: Bool) {
+        sessionQueue.async {
+            guard let connection = self.output.connection(with: .video), connection.isEnabled != enabled else { return }
+            connection.isEnabled = enabled
+        }
+    }
+
     /// Adds or removes the TrueDepth depth stream. Returns a short description of the active
     /// depth format, or why there is none, on the main queue (debug recorder).
     func setDepthEnabled(_ enabled: Bool, completion: @escaping (String) -> Void = { _ in }) {

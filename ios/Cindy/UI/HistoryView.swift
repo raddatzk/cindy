@@ -53,7 +53,7 @@ struct WorkoutDetailView: View {
                 Text(record.date.formatted(date: .long, time: .shortened, in: Localization.locale))
                     .foregroundStyle(.secondary)
                 if let plan = record.plan {
-                    Text(L("\(plan.durationMinutes) min · \(plan.summary)"))
+                    Text(L("\(plan.durationMinutes) min · \(plan.summaryWithPlank)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

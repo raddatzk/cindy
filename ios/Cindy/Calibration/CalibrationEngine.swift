@@ -43,11 +43,12 @@ final class CalibrationEngine {
     private var timeoutTask: Task<Void, Never>?
     private var cameraRunning = false
 
+    /// Holds in `exercises` are skipped: they run on a timer.
     init(store: CalibrationStore, existing: CalibrationProfile?, config: SignalConfig = .default,
          exercises: [Exercise] = Exercise.allCases, audio: AudioFeedback? = nil) {
         self.store = store
         self.config = config
-        self.exercises = exercises
+        self.exercises = exercises.filter(\.needsCalibration)
         self.audio = audio ?? .shared
         self.profile = existing ?? CalibrationProfile()
         self.camera = CameraSession(config: config)
@@ -197,7 +198,7 @@ final class CalibrationEngine {
         }
         if observation.face != nil || observation.pose != nil { bodyFrames += 1 }
         let analyzer = CalibrationAnalyzer(config: config, source: output.source)
-        if let calibration = exercise.isHold ? analyzer.evaluateHold(trace) : analyzer.evaluate(trace) {
+        if let calibration = analyzer.evaluate(trace) {
             timeoutTask?.cancel()
             processor.setPipeline(nil)
             if output.source == .brightness, bodyFrames == 0 {
@@ -231,7 +232,7 @@ final class CalibrationEngine {
         processor.setPipeline(nil)
         let source = config.source(for: exercise)
         let analyzer = CalibrationAnalyzer(config: config, source: source)
-        let failure = exercise.isHold ? analyzer.diagnoseHold(trace) : analyzer.diagnose(trace)
+        let failure = analyzer.diagnose(trace)
         step = .failed(exercise, failure)
     }
 

@@ -43,6 +43,8 @@ struct CalibrationView: View {
 private struct CalibrationFlowView: View {
     @Bindable var engine: CalibrationEngine
     var onDone: () -> Void
+    /// Off by default: counting needs no picture, the preview only helps placing the phone.
+    @State private var showPreview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -143,7 +145,7 @@ private struct CalibrationFlowView: View {
     private func capturing(_ exercise: Exercise) -> some View {
         VStack(spacing: 16) {
             stepHeader(exercise)
-            Text(exercise.isHold ? L("Now: hold the plank still") : L("Now: 1 \(exercise.singularName)"))
+            Text(L("Now: 1 \(exercise.singularName)"))
                 .font(.largeTitle.bold())
             ProgressView(value: engine.captureProgress)
                 .tint(.brand)
@@ -257,10 +259,21 @@ private struct CalibrationFlowView: View {
         }
     }
 
+    @ViewBuilder
     private var preview: some View {
-        CameraPreviewView(session: engine.camera.session)
-            .frame(height: 180)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+        if showPreview {
+            CameraPreviewView(session: engine.camera.session)
+                .frame(height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        Button {
+            showPreview.toggle()
+        } label: {
+            Label(showPreview ? L("Hide camera preview") : L("Show camera preview"),
+                  systemImage: showPreview ? "video.slash" : "video.fill")
+                .font(.subheadline)
+        }
+        .buttonStyle(.bordered)
     }
 
     private var subjectIndicator: some View {
@@ -308,7 +321,7 @@ private struct CalibrationFlowView: View {
         case .squat:
             return L("Toes just behind the phone, then keep still; you can look wherever you like. After the countdown: one squat, then stand up straight again.")
         case .plank:
-            return L("Get into the plank position, face above the phone, and stay still. After the countdown hold the position for 3 seconds.")
+            return "" // never calibrated: holds run on a timer
         }
     }
 }

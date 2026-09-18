@@ -12,8 +12,6 @@ struct PipelineOutput: Equatable, Sendable {
     var phase: RepPhase
     var isArmed: Bool
     var repCount: Int
-    /// Accumulated hold time (plank only).
-    var heldSeconds: TimeInterval? = nil
     /// Thresholds the detector currently compares against (rescaled once armed if relative).
     var thresholds: RepThresholds? = nil
 }
@@ -30,15 +28,12 @@ final class SignalPipeline {
     private let extractor: SignalExtractor
     private var ema: EMAFilter
     private var median: MedianFilter?
-    private let detector: RepDetector?
-    private let holdDetector: HoldDetector?
+    private let detector: RepDetector
     private var evidence: BodyEvidence?
     /// Timestamp of the previous frame of any confidence; the EMA scales to this interval.
     private var lastTimestamp: TimeInterval?
 
-    /// `holdSeconds` switches the pipeline to the time-based hold detector (plank).
-    init(exercise: Exercise, thresholds: RepThresholds, source: SignalSource? = nil, config: SignalConfig = .default,
-         holdSeconds: TimeInterval? = nil) {
+    init(exercise: Exercise, thresholds: RepThresholds, source: SignalSource? = nil, config: SignalConfig = .default) {
         let source = source ?? config.source(for: exercise)
         let extractor = SignalExtractor(config: config)
         var thresholds = thresholds
@@ -54,14 +49,8 @@ final class SignalPipeline {
         self.extractor = extractor
         self.ema = EMAFilter(alpha: config.emaAlpha)
         self.median = source == .pose || source == .depth ? MedianFilter(window: config.poseMedianWindow) : nil
-        if let holdSeconds {
-            self.holdDetector = HoldDetector(thresholds: thresholds, targetSeconds: holdSeconds, config: config)
-            self.detector = nil
-        } else {
-            self.detector = RepDetector(thresholds: thresholds, config: config)
-            self.holdDetector = nil
-        }
-        if source == .brightness, let detector {
+        self.detector = RepDetector(thresholds: thresholds, config: config)
+        if source == .brightness {
             evidence = BodyEvidence(config: config)
             detector.cycleValidator = { [weak self] in
                 guard let evidence = self?.evidence, evidence.hasObservations else { return true }
@@ -70,16 +59,9 @@ final class SignalPipeline {
         }
     }
 
-    var isArmed: Bool { detector?.isArmed ?? holdDetector?.isArmed ?? false }
-    var repCount: Int { detector?.repCount ?? holdDetector?.repCount ?? 0 }
-    private var phase: RepPhase { detector?.phase ?? holdDetector?.phase ?? .rest }
-    private var heldSeconds: TimeInterval? { holdDetector?.heldSeconds }
-    private var activeThresholds: RepThresholds? { detector?.activeThresholds ?? holdDetector?.thresholds }
-
-    private func detect(value: Float?, confidence: Float, timestamp: TimeInterval) -> RepDetectorEvent? {
-        if let detector { return detector.process(value: value, confidence: confidence, timestamp: timestamp) }
-        return holdDetector?.process(value: value, confidence: confidence, timestamp: timestamp)
-    }
+    var isArmed: Bool { detector.isArmed }
+    var repCount: Int { detector.repCount }
+    private var phase: RepPhase { detector.phase }
 
     func process(_ observation: FrameObservation) -> PipelineOutput {
         evidence?.update(observation, cycleActive: phase != .rest)
@@ -100,7 +82,7 @@ final class SignalPipeline {
         } else {
             smoothed = ema.value // hold the last value; the detector ignores this frame anyway
         }
-        let event = detect(
+        let event = detector.process(
             value: confidence >= config.minConfidence ? smoothed : nil,
             confidence: confidence,
             timestamp: timestamp
@@ -108,7 +90,7 @@ final class SignalPipeline {
         return PipelineOutput(
             timestamp: timestamp, exercise: exercise, source: source, raw: value, smoothed: smoothed,
             confidence: confidence, event: event, phase: phase, isArmed: isArmed,
-            repCount: repCount, heldSeconds: heldSeconds, thresholds: activeThresholds
+            repCount: repCount, thresholds: detector.activeThresholds
         )
     }
 }

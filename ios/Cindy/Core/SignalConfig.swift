@@ -95,9 +95,6 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// (recording 2026-09-17: bottoms at 32–57 % of the standing distance).
     var depthRestLeave: Float = 0.25
     var depthRestPeak: Float = 0.5
-    /// Half-width of the plank band on the depth signal, relative to the mean distance. Tighter than
-    /// the face band: getting up after the recorded push-ups measured only ~20 % farther than their top.
-    var depthHoldBandMargin: Float = 0.15
     /// Something within this distance of the phone (5th percentile) counts as a person in view.
     var depthPresenceDistance: Float = 1.0
 
@@ -126,7 +123,7 @@ struct SignalConfig: Codable, Equatable, Sendable {
     /// Same for pull-ups.
     var pullUpFaceYWeight: Float = 0
 
-    /// Signal source per exercise. Squats and push-ups (and the plank with them) use the TrueDepth
+    /// Signal source per exercise. Squats and push-ups use the TrueDepth
     /// distance (CSV recordings 2026-09-17: 10/10 squats whichever way the athlete looked); phones
     /// without a TrueDepth camera fall back to `pushUpFallbackSource` and `squatFallbackSource`.
     /// Brightness squats: from the floor the face is only found while the athlete looks down, and
@@ -154,14 +151,12 @@ struct SignalConfig: Codable, Equatable, Sendable {
     var calibrationMinAbsoluteExcursion: Float = 0.05
     /// Brightness (0…1) must dip by at least this much; the recorded squats dipped 0.03–0.09.
     var calibrationMinBrightnessExcursion: Float = 0.015
-    /// Seconds the athlete holds the plank during calibration.
-    var calibrationHoldDuration: TimeInterval = 3
-    /// Half-width of the plank band relative to the mean signal (± 25 %).
-    var calibrationHoldBandMargin: Float = 0.25
 
     // MARK: Workout
 
     var workoutCountdownSeconds: Int = 5
+    /// Countdown after the athlete taps start on a hold (plank) before its clock runs.
+    var holdCountdownSeconds: Int = 3
 
     // MARK: Camera
 
@@ -175,7 +170,7 @@ struct SignalConfig: Codable, Equatable, Sendable {
         case .pullUp: return available(pullUpSource, fallback: .face)
         case .pushUp: return available(pushUpSource, fallback: pushUpFallbackSource)
         case .squat: return available(squatSource, fallback: squatFallbackSource)
-        case .plank: return source(for: .pushUp) // same geometry as the push-up top position
+        case .plank: return source(for: .pushUp) // unused: holds run on a timer
         }
     }
 

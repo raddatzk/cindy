@@ -44,27 +44,43 @@ struct WorkoutPlanTests {
         #expect(machine.repCount == 14)
     }
 
-    @Test func customTargetsAndHoldsAreRespected() {
+    @Test func thePlankFollowsTheAmrapOutsideTheRound() {
         var plan = WorkoutPlan.withoutPullUps
         plan.setTarget(3, for: .pushUp)
         plan.setEnabled(.plank, true)
         plan.setTarget(20, for: .plank)
-        #expect(plan.exercises == [.pushUp, .squat, .plank])
-        #expect(plan.countTarget(for: .plank) == 1)
-        #expect(plan.repsPerRound == 3 + 15 + 1)
-        #expect(plan.summary == "3 Liegestütze · 15 Kniebeugen · 20 s Plank")
+        #expect(plan.exercises == [.pushUp, .squat])
+        #expect(plan.contains(.plank))
+        #expect(plan.target(for: .plank) == 20)
+        #expect(plan.repsPerRound == 3 + 15)
+        #expect(plan.summary == "3 Liegestütze · 15 Kniebeugen")
+        #expect(plan.summaryWithPlank == "3 Liegestütze · 15 Kniebeugen, danach 20 s Plank")
 
         let machine = WorkoutStateMachine(plan: plan)
         machine.beginCountdown(); machine.start(); machine.activate()
         for _ in 0..<3 { machine.registerRep() }
-        #expect(machine.exercise == .squat)
         machine.activate()
-        for _ in 0..<15 { machine.registerRep() }
-        #expect(machine.exercise == .plank)
-        machine.activate()
-        let events = machine.registerRep()
+        let events = (0..<15).flatMap { _ in machine.registerRep() }
         #expect(events.contains(.roundCompleted(1)))
+        #expect(machine.exercise == .pushUp)
+        machine.activate()
+        machine.registerRep()
+        machine.beginPlank()
+        #expect(machine.phase == .plank)
+        #expect(machine.adjust(by: 1).isEmpty) // the score is final
         #expect(machine.score.totalReps == 19)
+        #expect(machine.finish() == [.finished])
+    }
+
+    @Test func plansWithThePlankInTheRoundMoveItBehindTheAmrap() throws {
+        let saved = #"{"sets":[{"exercise":"pushUp","target":10},{"exercise":"plank","target":45},{"exercise":"squat","target":15}],"durationMinutes":20}"#
+        let plan = try JSONDecoder().decode(WorkoutPlan.self, from: Data(saved.utf8))
+        #expect(plan.exercises == [.pushUp, .squat])
+        #expect(plan.plankSeconds == 45)
+        let roundTripped = try JSONDecoder().decode(WorkoutPlan.self, from: JSONEncoder().encode(plan))
+        #expect(roundTripped == plan)
+        let withoutPlank = try JSONDecoder().decode(WorkoutPlan.self, from: JSONEncoder().encode(WorkoutPlan.cindy))
+        #expect(withoutPlank.plankSeconds == nil)
     }
 
     @Test func targetsStayWithinTheCindyPrescription() {

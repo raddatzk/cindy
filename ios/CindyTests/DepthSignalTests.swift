@@ -86,33 +86,10 @@ struct DepthSignalTests {
         let extractor = SignalExtractor()
         var observation = FrameObservation(timestamp: 0)
         observation.depth = DepthMetrics(validFraction: 0.06, p05: 0.16, p10: 0.17, median: 1.7, centerMedian: nil)
-        #expect(extractor.depthSignal(observation, for: .pushUp).value == 0.16)
+        #expect(extractor.depthSignal(observation).value == 0.16)
         observation.depth = DepthMetrics(validFraction: 0.94, p05: 0.42, p10: 0.44, median: 0.9, centerMedian: 0.5)
-        #expect(extractor.depthSignal(observation, for: .pushUp).value == 0.9)
+        #expect(extractor.depthSignal(observation).value == 0.9)
         observation.depth?.age = 1
-        #expect(extractor.depthSignal(observation, for: .pushUp).value == nil) // stale map
-    }
-
-    @Test func plankHoldsOnlyWithTheFaceInView() throws {
-        let trace = stride(from: 0.0, through: 3.2, by: 1.0 / 30).map { CalibrationSample(timestamp: $0, value: 0.9) }
-        let calibration = try #require(CalibrationAnalyzer(source: .depth).evaluateHold(trace))
-        // Getting up after the recorded push-ups measured ~1.1 m; that must leave the band.
-        #expect(calibration.high < 1.05)
-        let face = FaceObservation(boundingBox: CGRect(x: 0.3, y: 0.3, width: 0.3, height: 0.3), confidence: 0.9)
-        func held(withFace: Bool) -> TimeInterval? {
-            let pipeline = SignalPipeline(exercise: .plank, thresholds: calibration.thresholds, source: .depth,
-                                          holdSeconds: 60)
-            var output: PipelineOutput?
-            for t in stride(from: 0.0, through: 5.0, by: 1.0 / 30) {
-                var observation = FrameObservation(timestamp: t)
-                observation.face = withFace ? face : nil
-                observation.depth = DepthMetrics(validFraction: 0.94, p05: 0.4, p10: 0.42, median: 0.9,
-                                                 centerMedian: 0.6)
-                output = pipeline.process(observation)
-            }
-            return output?.heldSeconds
-        }
-        #expect(held(withFace: true) ?? 0 > 4)
-        #expect(held(withFace: false) == 0)
+        #expect(extractor.depthSignal(observation).value == nil) // stale map
     }
 }

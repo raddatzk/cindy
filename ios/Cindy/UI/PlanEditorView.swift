@@ -88,11 +88,15 @@ struct PlanEditorList<Trailing: View>: View {
                     }
                     ExerciseDemoButton(exercise: .plank, style: .icon)
                 }
+                Stepper(value: Binding(get: { plan.plankSets }, set: { plan.setPlankSets($0) }),
+                        in: WorkoutPlan.plankSetRange) {
+                    Text(L("Sets: \(plan.plankSets)"))
+                }
             }
         } header: {
             Text(L("After the AMRAP"))
         } footer: {
-            Text(L("Start it yourself once you are in position. It does not count towards the score."))
+            Text(L("Start each set yourself once you are in position. The plank does not count towards the score."))
         }
     }
 

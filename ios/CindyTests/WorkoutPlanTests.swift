@@ -72,6 +72,24 @@ struct WorkoutPlanTests {
         #expect(machine.finish() == [.finished])
     }
 
+    @Test func thePlankCanHaveSeveralSets() throws {
+        var plan = WorkoutPlan.withoutPullUps
+        plan.setEnabled(.plank, true)
+        #expect(plan.plankSets == 1)
+        plan.setPlankSets(3)
+        #expect(plan.summaryWithPlank == "10 Liegestütze · 15 Kniebeugen, danach 3 × 30 s Plank")
+        plan.setPlankSets(0)
+        #expect(plan.plankSets == 1)
+        plan.setPlankSets(50)
+        #expect(plan.plankSets == WorkoutPlan.plankSetRange.upperBound)
+        plan.setPlankSets(3)
+        #expect(plan.repsPerRound == 25) // sets stay outside the score
+        let decoded = try JSONDecoder().decode(WorkoutPlan.self, from: JSONEncoder().encode(plan))
+        #expect(decoded.plankSets == 3)
+        let older = #"{"sets":[{"exercise":"squat","target":15}],"durationMinutes":20,"plankSeconds":30}"#
+        #expect(try JSONDecoder().decode(WorkoutPlan.self, from: Data(older.utf8)).plankSets == 1)
+    }
+
     @Test func plansWithThePlankInTheRoundMoveItBehindTheAmrap() throws {
         let saved = #"{"sets":[{"exercise":"pushUp","target":10},{"exercise":"plank","target":45},{"exercise":"squat","target":15}],"durationMinutes":20}"#
         let plan = try JSONDecoder().decode(WorkoutPlan.self, from: Data(saved.utf8))

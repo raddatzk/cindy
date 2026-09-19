@@ -19,16 +19,19 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
     /// The round: rep exercises only.
     var sets: [ExerciseSet]
     var durationMinutes: Int = 20
-    /// Seconds of the plank after the AMRAP; nil = no plank.
+    /// Seconds of each plank set after the AMRAP; nil = no plank.
     var plankSeconds: Int?
+    /// Plank sets after the AMRAP; the athlete starts each one, there is no set rest.
+    var plankSets: Int = 1
 
-    init(sets: [ExerciseSet], durationMinutes: Int = 20, plankSeconds: Int? = nil) {
+    init(sets: [ExerciseSet], durationMinutes: Int = 20, plankSeconds: Int? = nil, plankSets: Int = 1) {
         self.sets = sets
         self.durationMinutes = durationMinutes
         self.plankSeconds = plankSeconds
+        self.plankSets = plankSets
     }
 
-    private enum CodingKeys: String, CodingKey { case sets, durationMinutes, plankSeconds }
+    private enum CodingKeys: String, CodingKey { case sets, durationMinutes, plankSeconds, plankSets }
 
     /// Plans saved while the plank was part of the round (and history records carrying them)
     /// had it in `sets`; it becomes the finisher.
@@ -39,6 +42,7 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
         durationMinutes = try container.decodeIfPresent(Int.self, forKey: .durationMinutes) ?? 20
         plankSeconds = try container.decodeIfPresent(Int.self, forKey: .plankSeconds)
             ?? decoded.first { $0.exercise.isHold }?.target
+        plankSets = try container.decodeIfPresent(Int.self, forKey: .plankSets) ?? 1
     }
 
     /// The real WOD: 5 pull-ups, 10 push-ups, 15 squats, 20 minutes.
@@ -53,6 +57,7 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
 
     /// Allowed target per exercise: reps up to the Cindy prescription (more work comes from
     /// more rounds, not bigger sets), plank seconds in steps of five.
+    static let plankSetRange = 1...10
     static func targetRange(for exercise: Exercise) -> ClosedRange<Int> {
         exercise.isHold ? 5...300 : 1...WorkoutPlan.cindy.target(for: exercise)
     }
@@ -107,10 +112,11 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
     /// "5 pull-ups · 10 push-ups · 15 squats": one round.
     var summary: String { sets.map(\.label).joined(separator: " · ") }
 
-    /// The round plus the plank after it: "5 pull-ups · 10 push-ups · 15 squats, then 30 s plank".
+    /// The round plus the plank after it: "5 pull-ups · 10 push-ups · 15 squats, then 3 × 30 s plank".
     var summaryWithPlank: String {
         guard let plankSeconds else { return summary }
-        let plankSummary = ExerciseSet(exercise: .plank, target: plankSeconds).label
+        let setSummary = ExerciseSet(exercise: .plank, target: plankSeconds).label
+        let plankSummary = plankSets > 1 ? L("\(plankSets) × \(setSummary)") : setSummary
         return L("\(summary), then \(plankSummary)")
     }
 
@@ -143,6 +149,10 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
         sets[index].target = min(max(target, range.lowerBound), range.upperBound)
     }
 
+    mutating func setPlankSets(_ count: Int) {
+        plankSets = min(max(count, WorkoutPlan.plankSetRange.lowerBound), WorkoutPlan.plankSetRange.upperBound)
+    }
+
     /// Moves an exercise one place up (-1) or down (+1) in the round.
     mutating func move(_ exercise: Exercise, by offset: Int) {
         guard let index = sets.firstIndex(where: { $0.exercise == exercise }) else { return }
@@ -162,6 +172,7 @@ struct WorkoutPlan: Codable, Hashable, Sendable {
             plan.setTarget(set.target, for: set.exercise)
         }
         if let plankSeconds { plan.setTarget((plankSeconds + 2) / 5 * 5, for: .plank) }
+        plan.setPlankSets(plankSets)
         return plan
     }
 }

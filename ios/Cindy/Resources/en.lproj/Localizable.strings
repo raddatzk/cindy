@@ -241,5 +241,9 @@
 "Time is up" = "Time is up";
 "Drag to reorder." = "Drag to reorder.";
 "After the AMRAP" = "After the AMRAP";
-"Start it yourself once you are in position. It does not count towards the score." = "Start it yourself once you are in position. It does not count towards the score.";
 "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep." = "This iPhone has no Face ID camera, so Cindy counts from the camera picture alone. That is less reliable; correct with +1 and −1 when it misses a rep.";
+"%lld × %@" = "%lld × %@";
+"Set %lld of %lld" = "Set %lld of %lld";
+"Sets: %lld" = "Sets: %lld";
+"%@: %@ s" = "%@: %@ s";
+"Start each set yourself once you are in position. The plank does not count towards the score." = "Start each set yourself once you are in position. The plank does not count towards the score.";

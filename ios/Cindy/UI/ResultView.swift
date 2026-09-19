@@ -20,9 +20,10 @@ struct ResultView: View {
                 .font(.system(size: 96, weight: .black, design: .rounded).monospacedDigit())
             Text(L("\(record.rounds) rounds + \(record.extraReps) reps · \(record.score.totalReps) total reps"))
                 .foregroundStyle(.secondary)
-            if let plankSeconds = record.plankSeconds {
+            if let holds = record.plankHolds, !holds.isEmpty {
                 // Held after the AMRAP, outside the score.
-                Label(ExerciseSet(exercise: .plank, target: plankSeconds).label, systemImage: "timer")
+                let summary = holds.map(String.init).joined(separator: " · ")
+                Label(L("\(Exercise.plank.displayName): \(summary) s"), systemImage: "timer")
                     .foregroundStyle(.secondary)
             }
             comparison

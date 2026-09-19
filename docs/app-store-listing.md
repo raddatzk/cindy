@@ -79,8 +79,8 @@ or short and whether the phone sits near your hands or near your feet.
 
 YOUR WORKOUT, YOUR RULES
 Edit the round: turn exercises on and off, set the reps for each, reorder them
-by dragging, change the duration, add a plank to hold once the clock has run
-out. One tap restores the original 5 / 10 / 15 in 20 minutes.
+by dragging, change the duration, add plank sets to hold once the clock has
+run out. One tap restores the original 5 / 10 / 15 in 20 minutes.
 
 A SUGGESTION FOR NEXT TIME
 Every round is timed. Afterwards you get a chart of your round times, a reading
@@ -158,7 +158,7 @@ deinen Händen oder bei deinen Füßen liegt.
 
 DEIN WORKOUT, DEINE REGELN
 Stell die Runde um: Übungen an- und abschalten, Wiederholungen festlegen,
-Reihenfolge per Fingerzug ändern, Dauer anpassen, eine Plank für nach Ablauf
+Reihenfolge per Fingerzug ändern, Dauer anpassen, Plank-Sätze für nach Ablauf
 der Zeit ergänzen. Ein Tipp stellt das Original wieder her, 5 / 10 / 15 in 20 Minuten.
 
 EIN VORSCHLAG FÜRS NÄCHSTE MAL

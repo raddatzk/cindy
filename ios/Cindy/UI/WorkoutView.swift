@@ -206,9 +206,14 @@ private struct WorkoutScreen: View {
         }
     }
 
-    /// The plank runs on a timer: the athlete starts it once in position and may end it early.
+    /// The plank runs on a timer: the athlete starts each set once in position and may end it early.
     @ViewBuilder
     private var holdControl: some View {
+        if engine.plan.plankSets > 1 {
+            Text(L("Set \(engine.plankSet) of \(engine.plan.plankSets)"))
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
         if let countdown = engine.holdCountdown {
             Text(verbatim: "\(countdown)")
                 .font(.system(size: 56, weight: .black, design: .rounded))

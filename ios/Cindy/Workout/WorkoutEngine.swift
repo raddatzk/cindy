@@ -36,6 +36,10 @@ final class WorkoutEngine {
     private(set) var holdCountdown: Int?
     /// Whether the plank clock runs.
     var isPlankRunning: Bool { holdStart != nil }
+    /// The plank set in progress or up next (1-based).
+    private(set) var plankSet = 1
+    /// Seconds held in the plank sets finished so far.
+    private var plankHolds: [Int] = []
     /// The exercise after the current one (for the on-screen hint).
     var nextExercise: Exercise { plan.next(after: exercise) }
     var isPaused: Bool { phase == .paused }
@@ -156,7 +160,8 @@ final class WorkoutEngine {
     }
 
     /// The athlete is in the plank and tapped start: a short countdown, then the clock runs until the
-    /// plank's target (or until they tap finish), and the workout is over.
+    /// set's target (or until they tap finish). The next set waits for its own start; after the last
+    /// one the workout is over.
     func startPlank() {
         guard machine.phase == .plank, holdStart == nil, holdCountdownTask == nil else { return }
         audio.prepare()
@@ -181,10 +186,10 @@ final class WorkoutEngine {
         }
     }
 
-    /// Ends the plank before its target; the time held so far is recorded.
+    /// Ends the running plank set before its target; the time held so far is recorded.
     func finishPlank() {
-        guard machine.phase == .plank else { return }
-        finishWorkout(completed: true)
+        guard machine.phase == .plank, isPlankRunning else { return }
+        completePlankSet()
     }
 
     func resume() {
@@ -271,6 +276,8 @@ final class WorkoutEngine {
         processor.setPipeline(nil)
         stopCamera()
         machine.beginPlank()
+        plankSet = 1
+        plankHolds = []
         heldSeconds = 0
         audio.endSignal()
         sync()
@@ -282,7 +289,22 @@ final class WorkoutEngine {
         holdCountdown = nil
     }
 
-    /// Advances the plank clock; beeps every 10 s and ends the workout at the target.
+    /// Banks the running set; the next one waits for its start, the last one ends the workout.
+    private func completePlankSet() {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        holdStart = nil
+        plankHolds.append(Int(heldSeconds ?? 0))
+        guard plankSet < plan.plankSets else {
+            finishWorkout(completed: true)
+            return
+        }
+        audio.goSignal()
+        plankSet += 1
+        heldSeconds = 0
+    }
+
+    /// Advances the plank clock; beeps every 10 s and completes the set at its target.
     private func tickPlank() {
         guard let holdStart, machine.phase == .plank else { return }
         let held = Date().timeIntervalSince(holdStart)
@@ -292,7 +314,7 @@ final class WorkoutEngine {
         if Int(held) / 10 > previous / 10, Int(held) < target {
             audio.beep() // every 10 s of plank
         }
-        if held >= TimeInterval(target) { finishWorkout(completed: true) }
+        if held >= TimeInterval(target) { completePlankSet() }
     }
 
     /// A workout cannot count what it cannot see. Losing the camera pauses it
@@ -447,6 +469,9 @@ final class WorkoutEngine {
         holdTimer = nil
         stopClock()
         let reachedPlank = machine.phase == .plank
+        // A set stopped mid-way counts with the time held so far.
+        let holds = isPlankRunning ? plankHolds + [Int(heldSeconds ?? 0)] : plankHolds
+        holdStart = nil
         let events = machine.finish()
         guard !events.isEmpty || result == nil else { return }
         processor.setPipeline(nil)
@@ -456,7 +481,7 @@ final class WorkoutEngine {
         result = WorkoutRecord(date: Date(), rounds: score.rounds, extraReps: score.reps,
                                durationSeconds: min(elapsed, plan.duration), completed: completed,
                                repsPerRound: plan.repsPerRound, roundTimestamps: roundTimestamps, plan: plan,
-                               plankSeconds: reachedPlank ? Int(heldSeconds ?? 0) : nil)
+                               plankHolds: reachedPlank ? holds : nil)
         if completed {
             audio.endSignal()
         }

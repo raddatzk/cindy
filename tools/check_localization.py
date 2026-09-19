@@ -19,14 +19,14 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 STRING_HINTS = (
     "formattedDecimal", "formattedPercent", "displayName", "singularName",
     "summary", "notation", "exerciseList", "localizedDescription", "reserveText",
-    "recordingSizePerSession", "format(", "name(", "title", "reason", "names", "plankSummary",
+    "recordingSizePerSession", "format(", "name(", "title", "reason", "names", "plankSummary", "setSummary",
     # Any `.formatted(…)` produces a String, whatever it started as.
     ".formatted(",
 )
 INT_HINTS = (
     "durationMinutes", "rounds", "reps", "totalReps", "extraReps", "stepNumber",
     "stepCount", "currentRound", "Int(", "minutes", "diff", "round", "target",
-    "value", "countdownValue", "countdown", "remaining", "readiness.score",
+    "value", "countdownValue", "countdown", "remaining", "readiness.score", "plankSet",
 )
 
 # Plural forms live in Localizable.stringsdict, never in Localizable.strings.

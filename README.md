@@ -145,11 +145,12 @@ the hard-coded debug thresholds.
 `Workout anpassen` on the start screen edits the round: enable/disable exercises,
 reps per exercise (seconds for the plank), order by drag and the AMRAP duration.
 The plan is persisted in UserDefaults; "Original Cindy" restores 5/10/15 in 20 min.
-The plank is not part of the round: it follows once, after the AMRAP clock has run out
-(`WorkoutPlan.plankSeconds`, `WorkoutPhase.plank`). The score is final by then and the
-camera is off. Once in position the athlete taps start, a 3 s countdown runs, then the
-clock runs to the target (beeping every 10 s) or until they tap finish; there is no
-pause. The seconds held are stored with the record (`plankSeconds`), outside the score.
+The plank is not part of the round: it follows after the AMRAP clock has run out, in one
+or more sets (`WorkoutPlan.plankSeconds`, `plankSets`, `WorkoutPhase.plank`). The score is
+final by then and the camera is off. Once in position the athlete taps start, a 3 s
+countdown runs, then the clock runs to the target (beeping every 10 s) or until they tap
+finish; there is no pause, and no timed rest between sets: each set waits for its own
+start. The seconds held per set are stored with the record (`plankHolds`), outside the score.
 Plans saved while the plank was a round exercise move it behind the AMRAP when decoded.
 
 The pause screen opens the same editor on the running workout (`PlanEditorList`,

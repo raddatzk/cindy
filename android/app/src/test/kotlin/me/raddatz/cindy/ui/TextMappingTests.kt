@@ -162,6 +162,9 @@ class TextMappingTests {
         assertEquals(R.string.plan_summary_with_plank, withPlank.id)
         assertResolvable(withPlank, "summary with plank")
         assertEquals(R.string.plan_set_hold, (withPlank.args[1] as UiText.Res).id)
-        assertEquals(summary, WorkoutPlan.cindy.withTarget(1, Exercise.PULL_UP).summaryWithPlankText)
+        assertEquals(summary, WorkoutPlan.cindy.withTarget(1, Exercise.PULL_UP).summaryWithPlankText)        // Several sets: "…, then 3 × 30 s Plank".
+        val withSets = plan.withPlankSets(3).summaryWithPlankText as UiText.Res
+        assertResolvable(withSets, "summary with plank sets")
+        assertEquals(R.string.plan_plank_sets_summary, (withSets.args[1] as UiText.Res).id)
     }
 }

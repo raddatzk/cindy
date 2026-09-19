@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.sp
 import me.raddatz.cindy.R
 import me.raddatz.cindy.app.AppModel
 import me.raddatz.cindy.core.Exercise
-import me.raddatz.cindy.core.ExerciseSet
 import me.raddatz.cindy.core.persistence.WorkoutRecord
 import me.raddatz.cindy.core.workout.ProgressionAdvisor
 import me.raddatz.cindy.ui.components.BackTopBar
@@ -46,6 +45,7 @@ import me.raddatz.cindy.ui.components.BrandButton
 import me.raddatz.cindy.ui.components.PanelCard
 import me.raddatz.cindy.ui.components.RoundChart
 import me.raddatz.cindy.ui.components.SecondaryButton
+import me.raddatz.cindy.ui.text.pluralNameRes
 import me.raddatz.cindy.ui.text.summaryWithPlankText
 import me.raddatz.cindy.ui.text.text
 import me.raddatz.cindy.ui.theme.CindyTheme
@@ -90,11 +90,18 @@ fun ResultScreen(model: AppModel, record: WorkoutRecord, onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            record.plankSeconds?.let { seconds ->
+            record.plankHolds?.takeIf { it.isNotEmpty() }?.let { holds ->
                 // Held after the AMRAP, outside the score.
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Filled.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(ExerciseSet(Exercise.PLANK, seconds).label.text.text(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(
+                            R.string.result_plank_holds,
+                            stringResource(Exercise.PLANK.pluralNameRes),
+                            holds.joinToString(" · "),
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 

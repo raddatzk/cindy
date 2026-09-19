@@ -246,6 +246,22 @@ private fun PlankSection(plan: WorkoutPlan, onPlanChange: (WorkoutPlan) -> Unit)
             }
             ExerciseDemoButton(exercise, style = DemoButtonStyle.ICON)
         }
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Stepper(
+                value = plan.plankSets,
+                range = WorkoutPlan.plankSetRange,
+                step = 1,
+                onValueChange = { onPlanChange(plan.withPlankSets(it)) },
+                subject = stringResource(R.string.plan_plank_sets_subject),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    stringResource(R.string.plan_plank_sets, plan.plankSets),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
     SectionFooter(stringResource(R.string.plan_section_after_amrap_footer))
 }

@@ -75,6 +75,8 @@ data class WorkoutState(
     val holdCountdown: Int? = null,
     /** Whether the plank clock runs. */
     val isPlankRunning: Boolean = false,
+    /** The plank set in progress or up next (1-based). */
+    val plankSet: Int = 1,
     val error: WorkoutError? = null,
     /**
      * Set while the camera is away ("The camera was interrupted. Cindy counts itself back in as
@@ -149,6 +151,8 @@ class WorkoutEngine(
     private var holdCountdownJob: Job? = null
     private var plankJob: Job? = null
     private var plankStartMillis: Long? = null
+    /** Seconds held in the plank sets finished so far. */
+    private val plankHolds = mutableListOf<Int>()
 
     /**
      * Whether the current pause is one the interruption caused rather than one the athlete asked
@@ -238,7 +242,8 @@ class WorkoutEngine(
 
     /**
      * The athlete is in the plank and tapped start: a short countdown, then the clock runs until
-     * the plank's target (or until they tap finish), and the workout is over.
+     * the set's target (or until they tap finish). The next set waits for its own start; after the
+     * last one the workout is over.
      */
     fun startPlank() {
         if (machine.phase != WorkoutPhase.PLANK || plankStartMillis != null || holdCountdownJob != null) return
@@ -264,10 +269,10 @@ class WorkoutEngine(
         }
     }
 
-    /** Ends the plank before its target; the time held so far is recorded. */
+    /** Ends the running plank set before its target; the time held so far is recorded. */
     fun finishPlank() {
-        if (machine.phase != WorkoutPhase.PLANK) return
-        finishWorkout(completed = true)
+        if (machine.phase != WorkoutPhase.PLANK || plankStartMillis == null) return
+        completePlankSet()
     }
 
     fun resume() {
@@ -377,7 +382,8 @@ class WorkoutEngine(
         frameSource.setPipeline(null)
         stopCamera()
         machine.beginPlank()
-        _state.update { it.copy(elapsed = plan.duration, heldSeconds = 0.0) }
+        plankHolds.clear()
+        _state.update { it.copy(elapsed = plan.duration, heldSeconds = 0.0, plankSet = 1) }
         audio.endSignal()
         sync()
     }
@@ -390,7 +396,21 @@ class WorkoutEngine(
         _state.update { it.copy(holdCountdown = null, isPlankRunning = false) }
     }
 
-    /** Advances the plank clock; beeps every 10 s and ends the workout at the target. */
+    /** Banks the running set; the next one waits for its start, the last one ends the workout. */
+    private fun completePlankSet() {
+        plankJob?.cancel()
+        plankJob = null
+        plankStartMillis = null
+        plankHolds += (_state.value.heldSeconds ?: 0.0).toInt()
+        if (_state.value.plankSet >= plan.plankSets) {
+            finishWorkout(completed = true)
+            return
+        }
+        audio.goSignal()
+        _state.update { it.copy(isPlankRunning = false, heldSeconds = 0.0, plankSet = it.plankSet + 1) }
+    }
+
+    /** Advances the plank clock; beeps every 10 s and completes the set at its target. */
     private fun tickPlank() {
         val start = plankStartMillis ?: return
         if (machine.phase != WorkoutPhase.PLANK) return
@@ -401,7 +421,7 @@ class WorkoutEngine(
         if (held.toInt() / 10 > previous / 10 && held.toInt() < target) {
             audio.beep() // every 10 s of plank
         }
-        if (held >= target) finishWorkout(completed = true)
+        if (held >= target) completePlankSet()
     }
 
     /**
@@ -547,6 +567,9 @@ class WorkoutEngine(
     }
 
     private fun finishWorkout(completed: Boolean) {
+        // A set stopped mid-way counts with the time held so far.
+        val holds = if (plankStartMillis != null) plankHolds + (_state.value.heldSeconds ?: 0.0).toInt() else plankHolds.toList()
+        plankStartMillis = null
         stopPlank()
         stopClock()
         val reachedPlank = machine.phase == WorkoutPhase.PLANK
@@ -565,7 +588,7 @@ class WorkoutEngine(
             repsPerRound = plan.repsPerRound,
             roundTimestamps = roundTimestamps.toList(),
             plan = plan,
-            plankSeconds = if (reachedPlank) (_state.value.heldSeconds ?: 0.0).toInt() else null,
+            plankHolds = if (reachedPlank) holds else null,
         )
         _state.update { it.copy(result = record) }
         if (completed) audio.endSignal()

@@ -338,7 +338,7 @@ class WorkoutEngineTests {
         engine.abort()
         val result = assertNotNull(engine.state.value.result)
         assertFalse(result.completed)
-        assertNull(result.plankSeconds)
+        assertNull(result.plankHolds)
         assertEquals(0, result.rounds)
         assertEquals(1, result.extraReps)
         assertEquals(emptyList(), result.roundTimestamps)
@@ -347,9 +347,9 @@ class WorkoutEngineTests {
         engine.close()
     }
 
-    /** Runs a five-minute plan with a 30 s plank to the end of the AMRAP clock. */
-    private suspend fun TestScope.inThePlank(): WorkoutEngine {
-        val plan = WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true).copy(durationMinutes = 5)
+    /** Runs a five-minute plan with [sets] 30 s plank sets to the end of the AMRAP clock. */
+    private suspend fun TestScope.inThePlank(sets: Int = 1): WorkoutEngine {
+        val plan = WorkoutPlan.cindy.withEnabled(Exercise.PLANK, true).withPlankSets(sets).copy(durationMinutes = 5)
         val engine = engine(plan)
         started(engine)
         emit(Exercise.PULL_UP, RepDetectorEvent.Armed)
@@ -398,7 +398,7 @@ class WorkoutEngineTests {
         runCurrent()
         val result = assertNotNull(engine.state.value.result)
         assertTrue(result.completed)
-        assertEquals(30, result.plankSeconds)
+        assertEquals(listOf(30), result.plankHolds)
         assertEquals(1, result.extraReps)
         assertEquals(300.0, result.durationSeconds)
         assertEquals(listOf("beep", "beep", "end"), audio.events)
@@ -413,15 +413,39 @@ class WorkoutEngineTests {
         advanceTimeBy(3_000 + 12_000)
         runCurrent()
         finished.finishPlank()
-        assertEquals(12, assertNotNull(finished.state.value.result).plankSeconds)
+        assertEquals(listOf(12), assertNotNull(finished.state.value.result).plankHolds)
         finished.close()
 
         val stopped = inThePlank()
         stopped.abort() // before the start: the AMRAP itself was complete
         val result = assertNotNull(stopped.state.value.result)
         assertTrue(result.completed)
-        assertEquals(0, result.plankSeconds)
+        assertEquals(emptyList(), result.plankHolds)
         stopped.close()
+    }
+
+    @Test
+    fun eachPlankSetWaitsForItsOwnStart() = runTest {
+        val engine = inThePlank(sets = 2)
+        engine.startPlank()
+        advanceTimeBy(3_000 + 12_000)
+        runCurrent()
+        engine.finishPlank() // ends the first set only
+        assertNull(engine.state.value.result)
+        assertEquals(2, engine.state.value.plankSet)
+        assertFalse(engine.state.value.isPlankRunning)
+        assertEquals(0.0, engine.state.value.heldSeconds)
+        advanceTimeBy(60_000) // no timed rest: nothing happens until the next start
+        runCurrent()
+        assertNull(engine.state.value.result)
+
+        engine.startPlank()
+        advanceTimeBy(3_000 + 30_000)
+        runCurrent()
+        val result = assertNotNull(engine.state.value.result)
+        assertTrue(result.completed)
+        assertEquals(listOf(12, 30), result.plankHolds)
+        engine.close()
     }
 
     @Test

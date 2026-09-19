@@ -70,11 +70,17 @@ val ExerciseSetLabel.text: UiText
 /** "5 Pull-ups · 10 Push-ups · 15 Squats". */
 val WorkoutPlan.summaryText: UiText get() = UiText.Joined(summary.map { it.text })
 
-/** The round plus the plank after it: "5 Pull-ups · 10 Push-ups · 15 Squats, then 30 s Plank". */
+/** The round plus the plank after it: "5 Pull-ups · 10 Push-ups · 15 Squats, then 3 × 30 s Plank". */
 val WorkoutPlan.summaryWithPlankText: UiText
     get() {
-        val plank = summaryWithPlank.plank ?: return summaryText
-        return UiText.Res(R.string.plan_summary_with_plank, summaryText, plank.text)
+        val summary = summaryWithPlank
+        val plank = summary.plank ?: return summaryText
+        val plankText = if (summary.plankSets > 1) {
+            UiText.Res(R.string.plan_plank_sets_summary, summary.plankSets, plank.text)
+        } else {
+            plank.text
+        }
+        return UiText.Res(R.string.plan_summary_with_plank, summaryText, plankText)
     }
 
 @get:StringRes

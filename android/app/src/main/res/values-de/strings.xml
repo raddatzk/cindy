@@ -67,7 +67,12 @@
     <string name="plan_section_exercises_footer">Zum Umsortieren ziehen.</string>
     <string name="plan_section_not_in_plan">Nicht im Plan</string>
     <string name="plan_section_after_amrap">Nach dem AMRAP</string>
-    <string name="plan_section_after_amrap_footer">Du startest sie selbst, sobald du in Position bist. Sie zählt nicht zum Ergebnis.</string>
+    <string name="plan_section_after_amrap_footer">Jeden Satz startest du selbst, sobald du in Position bist. Die Plank zählt nicht zum Ergebnis.</string>
+    <string name="result_plank_holds">%1$s: %2$s s</string>
+    <string name="workout_plank_set">Satz %1$d von %2$d</string>
+    <string name="plan_plank_sets_subject">Sätze</string>
+    <string name="plan_plank_sets">Sätze: %1$d</string>
+    <string name="plan_plank_sets_summary">%1$d × %2$s</string>
     <string name="plan_summary_with_plank">%1$s, danach %2$s</string>
     <string name="plan_add_exercise">%1$s hinzufügen</string>
     <string name="plan_remove_exercise">%1$s entfernen</string>

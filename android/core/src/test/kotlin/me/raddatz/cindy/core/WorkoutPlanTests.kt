@@ -99,6 +99,21 @@ class WorkoutPlanTests {
     }
 
     @Test
+    fun thePlankCanHaveSeveralSets() {
+        var plan = WorkoutPlan.withoutPullUps.withEnabled(Exercise.PLANK, true)
+        assertEquals(1, plan.plankSets)
+        plan = plan.withPlankSets(3)
+        assertEquals(3, plan.summaryWithPlank.plankSets)
+        assertEquals(1, plan.withPlankSets(0).plankSets)
+        assertEquals(WorkoutPlan.plankSetRange.last, plan.withPlankSets(50).plankSets)
+        assertEquals(25, plan.repsPerRound) // sets stay outside the score
+        val decoded = CindyJson.decodeFromString(WorkoutPlan.serializer(), CindyJson.encodeToString(WorkoutPlan.serializer(), plan))
+        assertEquals(3, decoded.plankSets)
+        val older = """{"sets":[{"exercise":"squat","target":15}],"durationMinutes":20,"plankSeconds":30}"""
+        assertEquals(1, CindyJson.decodeFromString(WorkoutPlan.serializer(), older).plankSets)
+    }
+
+    @Test
     fun plansWithThePlankInTheRoundMoveItBehindTheAmrap() {
         val saved = """{"sets":[{"exercise":"pushUp","target":10},{"exercise":"plank","target":45},""" +
             """{"exercise":"squat","target":15}],"durationMinutes":20}"""

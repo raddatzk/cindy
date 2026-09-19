@@ -69,7 +69,12 @@
     <string name="plan_section_exercises_footer">Drag to reorder.</string>
     <string name="plan_section_not_in_plan">Not in the plan</string>
     <string name="plan_section_after_amrap">After the AMRAP</string>
-    <string name="plan_section_after_amrap_footer">Start it yourself once you are in position. It does not count towards the score.</string>
+    <string name="plan_section_after_amrap_footer">Start each set yourself once you are in position. The plank does not count towards the score.</string>
+    <string name="result_plank_holds">%1$s: %2$s s</string>
+    <string name="workout_plank_set">Set %1$d of %2$d</string>
+    <string name="plan_plank_sets_subject">Sets</string>
+    <string name="plan_plank_sets">Sets: %1$d</string>
+    <string name="plan_plank_sets_summary">%1$d × %2$s</string>
     <string name="plan_summary_with_plank">%1$s, then %2$s</string>
     <string name="plan_add_exercise">Add %1$s</string>
     <string name="plan_remove_exercise">Remove %1$s</string>

@@ -439,9 +439,16 @@ private fun ExerciseBlock(
     }
 }
 
-/** The plank runs on a timer: the athlete starts it once in position and may end it early. */
+/** The plank runs on a timer: the athlete starts each set once in position and may end it early. */
 @Composable
 private fun PlankControl(state: WorkoutState, name: String, onStart: () -> Unit, onFinish: () -> Unit) {
+    if (state.plan.plankSets > 1) {
+        Text(
+            stringResource(R.string.workout_plank_set, state.plankSet, state.plan.plankSets),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     val countdown = state.holdCountdown
     when {
         countdown != null -> {

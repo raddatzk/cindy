@@ -60,10 +60,10 @@ Everything stays on your phone
 No account, no sign-up, no server – the app does not even have permission to use the internet. The camera image is analysed on the device, frame by frame, and is never stored, never recorded and never transmitted. What leaves a frame is a few numbers about your movement. Nothing else.
 
 Built around your body, not an average
-A short calibration measures how your own push-up, pull-up, squat and plank look to the camera. The thresholds that decide what counts as a rep come from that measurement, not from a table, which is why counting works whether you are tall or short and whether the phone sits near your hands or near your feet.
+A short calibration measures how your own push-up, pull-up and squat look to the camera. The thresholds that decide what counts as a rep come from that measurement, not from a table, which is why counting works whether you are tall or short and whether the phone sits near your hands or near your feet.
 
 Your workout, your rules
-Edit the round: add and remove exercises, set the reps for each, reorder them by dragging, shorten the duration, add a plank as a timed hold. One tap restores the original 5 / 10 / 15 in 20 minutes. Not sure how a movement goes? Every exercise comes with an animated demonstration.
+Edit the round: add and remove exercises, set the reps for each, reorder them by dragging, shorten the duration, add plank sets to hold once the clock has run out. One tap restores the original 5 / 10 / 15 in 20 minutes. Not sure how a movement goes? Every exercise comes with an animated demonstration.
 
 A suggestion for next time
 Every round is timed. Afterwards you get a chart of your round times, a reading of how evenly you paced yourself, and one concrete suggestion for the next session – a minute more, one more rep, a longer plank. Adopt it with one tap, or ignore it. If a harder plan sets you back, Cindy notices and steps back with you.
@@ -105,10 +105,10 @@ Alles bleibt auf deinem Gerät
 Kein Konto, keine Anmeldung, kein Server – die App hat nicht einmal die Berechtigung, ins Internet zu gehen. Das Kamerabild wird auf dem Gerät ausgewertet, Bild für Bild, und dabei nicht gespeichert, nicht aufgezeichnet und nicht übertragen. Aus einem Bild bleiben ein paar Zahlen zu deiner Bewegung übrig. Sonst nichts.
 
 Auf deinen Körper eingestellt, nicht auf einen Durchschnitt
-Eine kurze Kalibrierung misst, wie dein Liegestütz, dein Klimmzug, deine Kniebeuge und deine Plank für die Kamera aussehen. Die Schwellen, ab denen etwas als Wiederholung zählt, stammen aus dieser Messung und nicht aus einer Tabelle. Deshalb zählt es richtig, ob du groß bist oder klein und ob das Handy näher bei deinen Händen oder bei deinen Füßen liegt.
+Eine kurze Kalibrierung misst, wie dein Liegestütz, dein Klimmzug und deine Kniebeuge für die Kamera aussehen. Die Schwellen, ab denen etwas als Wiederholung zählt, stammen aus dieser Messung und nicht aus einer Tabelle. Deshalb zählt es richtig, ob du groß bist oder klein und ob das Handy näher bei deinen Händen oder bei deinen Füßen liegt.
 
 Dein Workout, deine Regeln
-Stell die Runde um: Übungen hinzufügen und entfernen, Wiederholungen festlegen, Reihenfolge per Fingerzug ändern, Dauer verkürzen, eine Plank als Haltezeit ergänzen. Ein Tipp stellt das Original wieder her, 5 / 10 / 15 in 20 Minuten. Unsicher, wie eine Übung geht? Zu jeder gibt es eine animierte Vorführung.
+Stell die Runde um: Übungen hinzufügen und entfernen, Wiederholungen festlegen, Reihenfolge per Fingerzug ändern, Dauer verkürzen, Plank-Sätze für nach Ablauf der Zeit ergänzen. Ein Tipp stellt das Original wieder her, 5 / 10 / 15 in 20 Minuten. Unsicher, wie eine Übung geht? Zu jeder gibt es eine animierte Vorführung.
 
 Ein Vorschlag fürs nächste Mal
 Jede Runde wird gestoppt. Danach siehst du deine Rundenzeiten als Diagramm, wie gleichmäßig du eingeteilt hast, und einen konkreten Vorschlag für die nächste Einheit: eine Minute mehr, eine Wiederholung mehr, eine längere Plank. Mit einem Tipp übernimmst du ihn, oder du lässt es. Wirft dich ein härterer Plan zurück, merkt Cindy das und geht mit dir einen Schritt zurück.
